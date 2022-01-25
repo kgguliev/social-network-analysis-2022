@@ -1,0 +1,54 @@
+---
+title: "R Markdown Template"
+date: "January 18, 2022"
+output:
+  pdf_document: default
+  html_document: default
+header-includes:
+- \usepackage[utf8]{inputenc}
+- \usepackage[english, russian]{babel}
+- \usepackage[T1, OT2]{fontenc}
+fontsize: 12pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Template for Homeworks and Seminars
+
+
+<!-- this is a comment. It will not show up in the printed version of the document. Anything between the angled brackets with two dashes will be interpreted as a comment and ignored.-->
+
+
+\selectlanguage{english}
+This is an R Markdown template, which you can use to create your own documents. It has a header that can generate documents containing both latin and cyrillic characters. Please note that the file is set up to accept both languages; however, to print in one or the other, you always have to use the "select language" command, which preceeded this paragraph. If you attempt to switch between languages without this command, the knitter will choke.
+
+
+\begin{otherlanguage*}{russian}
+Этот документ - темплейт в Р-Маркдауне, который вы можете использовать, чтобы сдавать лабораторные и домашки. В преабуле включены все команды, чтобы он мог принимать и кириллицу, и латиницу. Проблема: нужно постоянно помнить о том, что кириллица - не "родная" ЛаТеху, и он не очень хорошо переходит с одного языка на другой без соответсвующих команд.
+\end{otherlanguage*}
+
+\foreignlanguage{russian}{Есть несколько вариантов использования команд, позволяющих переходить на кириллицу. Первый вариант показан в параграфе выше - там я просто начинаю целый параграф командой} "begin" \foreignlanguage{russian}{(без кавычек и с задним слэшем) - затем} "other language*" \foreignlanguage{russian}{в фигурных скобках (не забывайте звездочку!) и командой} russian \foreignlanguage{russian}{тоже в фигурных скобках. При таком использовании команд вставить английский текст в параграф невозможно - весь параграф должен идти на русском. Если же вы хотите использовать латиницу и кириллицу вперемешку, то придется использовать команду} "foreign language{russian}" \foreignlanguage{russian}{(без кавычек и с задним слэшем), как я делаю это в данном параграфе, чтобы вставлять русский текст. Все, что идет на английском, печатается за пределами фигурных скобок. Однако, и тут есть небольшая хитрость - чтобы это работало, нужна команда} "select language{english}" \foreignlanguage{russian}{без кавычек и с задным слэшем в начале документа, как это сделано в этом темплейте. Не забывайте эти детали, а еще лучше - будьте аккуратны со стиранием команд в имеющихся темплейтах, которые я вам буду предоставлять в течение семестра.}
+
+\foreignlanguage{russian}{Этот документ не "работает" на моей машине или часть букв не видны; что делать? (Например,  в этом файле все комбинации русских букв "т с" автоматически переводятся в "ц"}, \foreignlanguage{russian}{как вы уже заметили, я думаю.) Это потому, что на разных операционных системах разные типы кодирования кириллицы читаются по-разному. Чтобы избежать проблем заранее, я использовала самый старый и не самый лучший тип кодировки кириллицы. В преамбуле есть команда} "usepackage[T1, OT2]", \foreignlanguage{russian}{которая и определяет тип кодировки кегля. Первая опция, Т1, определяет кодировку латиницы; ее оставляем без изменений. А вот для кирилицы есть несколько опций, и ОТ2, используемая здесь - одна из самых старых и наименее гибких из них. Но она работает почти на всех операционных системах, и проблем у вас с ней быть не должно. Однако, если при сшивании документ не формируется и система выдает} "status 43" - \foreignlanguage{russian}{скорее всего, проблема в кодировке. Попробуйте изменить ОТ2 на} T2A \foreignlanguage{russian}{и, возможно, станет лучше. Это все, что касается языка в темплейте.}
+
+***********
+\textbf{How to work with the template:}
+
+1. Save the file that was used to generate this pdf ("R Mardown Template.Rmd") in a directory on your computer, where you will be saving your other work for this course, keep data files, etc.
+1. Open R Studio. From File -> Open File navigate to the directory where the template is saved. Open the template.
+1. To modify it for your assignments, select File -> Save as, and save the file with a new name (e.g., Lab1.Rmd). For ease of grading, it would be helpful if you save files with your last name, e.g., Ivanov_Lab1.Rmd.
+
+\textbf{The R component:}
+Of course, you can add code sniplets to this file the same way you would add it to any R Markdown file. You can modify them as the requirement dictates:
+
+```{r cars}
+summary(cars)
+```
+
+
+Good luck and have fun!
+
+
+
