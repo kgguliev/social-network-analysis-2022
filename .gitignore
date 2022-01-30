@@ -55,3 +55,18 @@ po/*~
 
 *.xls
 *.xlsx
+
+# docx
+
+*.doc
+*.docx
+
+# dat, paj, csv files
+
+*.dat
+*.paj
+*.csv
+
+# zip files
+
+*.zip
