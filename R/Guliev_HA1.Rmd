@@ -1,0 +1,236 @@
+---
+title: "Social Network Analysis: 2022"
+subtitle: "Home Assignment 1"
+author: Kirill Guliev, MA Comparative Social Research 
+date: "30 Jan 2022"
+output: word_document
+toc: true
+---
+
+```{r, echo = FALSE}
+
+knitr::opts_chunk$set(message = F, warning = FALSE)
+
+```
+
+# Loading all vital SNA libaries into the environment
+
+```{r}
+
+library(tidyverse)
+library(network)
+library(igraph)
+library(RColorBrewer)
+
+```
+
+# Code from the seminar 
+
+```{r, fig.width=6, fig.height=6}
+drugpaj <- read.paj('C:/Users/Кирилл/Desktop/CSR2023/SNA/social-network-analysis-2022/data/drugnet2.paj')
+
+names(drugpaj) # objects in drugpaj
+
+names(drugpaj$networks) 
+
+names(drugpaj$partitions)
+
+drug <- drugpaj$networks[[1]] # extract network
+
+class(drug)
+
+plot(drug)
+
+```
+
+## Question 1: What looks strange about this network and why?
+
+```{r}
+
+#summary(drug)
+
+network.size(drug) # how many nodes?
+network.edgecount(drug) # how many edges?
+network.dyadcount(drug) # how many dyads?
+
+```
+### Answer:
+
+There are elements in this network that are not connected with each other. We observe, that the number of these elements (_nodes_, `r network.size(drug)`) is greater than the number of edges in this network (`r network.edgecount(drug)`). 
+
+## Question 2: What do the numbers above represent? (Dyads, nodes, edges)
+
+```{r, eval = FALSE}
+
+network.size(drug) # how many nodes?
+network.edgecount(drug) # how many edges?
+network.dyadcount(drug) # how many dyads?
+
+```
+
+### Answer:
+
+* The first number - `r network.size(drug)` - represents the number of units of analysis. Say, these are people, drug users, who are under researcher's investigation.
+
+* The second number - `r network.edgecount(drug)` - represents the number of edges; or, in other words, the number of relationships between nodes. 
+
+* The third number - `r network.dyadcount(drug)` - represents the number of dyads, which is basically a relationship between two nodes. 
+
+## Question 3:  Plot the biz network with node attributes that you’ve set above
+
+```{r, fig.width=7, fig.height=3.5}
+# Seminar code
+
+load('C:/Users/Кирилл/Desktop/CSR2023/SNA/social-network-analysis-2022/data/flo.Rdata')
+
+flo.marriage <- as.network(as.matrix(flo.marriage), directed = FALSE)
+flo.biz <- as.network(as.matrix(flo.biz), directed = FALSE)
+# Add attributes
+network::set.vertex.attribute(flo.marriage, 'wealth', flo.att[, 2])
+network::set.vertex.attribute(flo.biz, 'wealth', flo.att[, 2])
+# Simple plots:
+par(mar = c(0, 0, 0, 0))
+plot(flo.marriage)
+plot(flo.biz)
+
+```
+
+
+### Answer:
+
+```{r, fig.width=7, fig.height=3.5}
+
+par(mar = c(0, 0, 0, 0))
+plot(
+  flo.biz,
+  vertex.cex = (network::get.vertex.attribute(flo.biz, 'wealth') / 25 + .4),
+  displaylabels = TRUE,
+  label.cex = .5,
+  label.pos = 0,
+  coord = plot(flo.biz)
+)
+
+```
+
+
+## Question 4: Using the code already shown, plot both of the new networks. Add attributes if you wish
+
+
+```{r}
+# Read vertex labels with scan()
+flo.names <-
+  scan(
+    'C:/Users/Кирилл/Desktop/CSR2023/SNA/social-network-analysis-2022/data/padgett.dat',
+    what = 'character',
+    skip = 4,
+    nlines = 16
+  )
+# Read data with read.table()
+flos <-
+  read.table(
+    'C:/Users/Кирилл/Desktop/CSR2023/SNA/social-network-analysis-2022/data/padgett.dat',
+    skip = 41,
+    col.names = flo.names
+  )
+# Read node attributes:
+flo.att <-
+  read.table(
+    'C:/Users/Кирилл/Desktop/CSR2023/SNA/social-network-analysis-2022/data/padgw.dat',
+    col.names = c('WEALTH', 'NUM.PRIORS', 'NUM.TIES'),
+    skip = 25
+  )
+
+
+# Separate adjacency matrices
+flo.marriage <-
+  flos[1:16, ]  # subset of the first 16 colums is the marriage network
+dim(flo.marriage)
+row.names(flo.marriage) <- flo.names # name
+flo.biz <-
+  flos[17:32, ] # subset of the second 16 is the business network.
+row.names(flo.biz) <- flo.names # name
+dim(flo.biz)
+# Check the data by listing a couple of rows and colums from each network.
+flo.marriage[1:2, 1:2]
+flo.marriage[15:16, 15:16]
+flo.biz[1:2, 1:2]
+flo.biz[15:16, 15:16]
+
+flo.marriage <- as.network(as.matrix(flo.marriage), directed = FALSE)
+flo.biz <- as.network(as.matrix(flo.biz), directed = FALSE)
+
+## add attributes
+network::set.vertex.attribute(flo.marriage, 'wealth', flo.att[, 2])
+network::set.vertex.attribute(flo.biz, 'wealth', flo.att[, 2])
+```
+
+
+### Answer:
+
+```{r, fig.width=7, fig.height=3.5}
+
+par(mar = c(0, 0, 0, 0))
+plot(
+  flo.biz,
+  vertex.cex = (network::get.vertex.attribute(flo.biz, 'wealth') / 25 + .4),
+  displaylabels = TRUE,
+  label.cex = .5,
+  label.pos = 0,
+  coord = plot(flo.biz)
+)
+plot(
+  flo.marriage,
+  vertex.cex = (network::get.vertex.attribute(flo.marriage, 'wealth') / 25 +
+                  .4),
+  displaylabels = TRUE,
+  label.cex = .5,
+  label.pos = 0,
+  coord = plot(flo.marriage)
+)
+
+```
+
+## Question 5: For the network "drug" that we created and loaded with attributes, create several different network plots, adding gender and ethnicity to the graph as node attributes. 
+
+### Answer:
+
+```{r, fig.width=7, fig.height=3.5}
+
+names(drugpaj$partitions) # attributes included
+gender <- drugpaj$partitions[[1]] # extract gender
+#gender #check the values assigned to each gender
+table(gender) # how many women/men
+# It is actually better to recode gender into 1 and 0 as opposed to 2 and 1;
+# setting 0/1 variable as an attribute is cleaner that way.
+female <- ifelse(gender == 2, 1, # recode
+                 ifelse(gender == 1, 0, NA))
+## set attributes
+drug <-
+  network::set.vertex.attribute(drug, 'female', value = c(female))
+ethnicity <- drugpaj$partitions[[2]] # extract ethnicity
+table(ethnicity) # how is it coded?
+drug <-
+  network::set.vertex.attribute(drug, 'ethnicity', value = c(ethnicity))
+
+
+par(mar = c(0, 0, 0, 0))
+plot(
+  main = "Drug users by ethnicity",
+  drug,
+  vertex.col = (network::get.vertex.attribute(drug, 'ethnicity')),
+  displaylabels = TRUE,
+  label.cex = .5,
+  label.pos = 0,
+  coord = plot(drug)
+)
+plot(
+  main = "Drug users by gender",
+  drug,
+  vertex.col = c("red", "blue"),
+  vertex.cex = (network::get.vertex.attribute(drug, 'female')),
+  displaylabels = TRUE,
+  label.cex = .5,
+  label.pos = 0,
+  coord = plot(drug)
+)
+```

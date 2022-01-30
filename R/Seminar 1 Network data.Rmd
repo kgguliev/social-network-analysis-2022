@@ -1,0 +1,336 @@
+---
+title: "National Research University Higher School of Economics"
+subtitle: "Faculty of Social Sciences" 
+author: "Introduction to Network Analysis, Spring 2022"
+date: "Seminar 1 Assignment, January 25, 2020"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \setlength\headheight{33pt}
+- \fancyhead[L]{NRU HSE International Laboratory for Applied Network Research}
+- \rhead{\includegraphics[width = .1\textwidth]{ANR logo.png}}
+- \fancypagestyle{plain}{\pagestyle{fancy}}
+output: pdf_document
+pdf_document:
+          includes:
+            in_header: docstyle.sty
+toc: true
+toc_depth: 4
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\noindent\rule{5cm}{0.4pt}
+
+Welcome to the first seminar! Hopefully, you now have at least an idea of how R works. I will provide you with detailed instructions, and hopefully, the task of working in R will get easier with each passing week. Every seminar we will be adding packages to our toolchest; I will clearly list them at the beginning of each seminar assignment. Before attempting to run any code, please make sure you have every necessary package installed. 
+
+\begin{itemize}
+\item In your Lab 1 folder, you will find the following files:
+  \begin{enumerate}
+  \item This file, "Seminar 1," in .pdf format.
+  \item Prep files I used to generate the pdf. You will need to save all of them in the same folder in order to knit the pdf out of it.
+  \begin{itemize}
+  \item The RMD file
+  \item The png of our lab's logo
+  \end{itemize}
+  \item Dataset "flo.Rdata," already in a format, readable to R; there is a short tutorial in this Seminar about reading different dataset formats. 
+  \item Dataset "drugnet2.paj," in Pajek format - it is a format from a special program called Pajek, very popular in network analysis.
+  \item Datasets: padgett.dat, padgw.dat. Data files in .dat format are common (come from Stata, for example), and they are also the files that UCINet, a relatively common network package, usually reads data from.
+  
+  \end{enumerate}
+
+\item For today's assignment, you will need the following packages (remember, R is case sensitive, make sure, when installing packages, to keep the appropriate case:
+\begin{enumerate}
+  \item rmarkdown 
+  \item sna
+  \item network 
+  \item RColorBrewer
+  \item igraph
+  \end{enumerate}
+Remember that to use certain package, you need to make sure that the library is installed (using install.packages("packagename") command). To use a loaded package, you call it with "library.(packagename)" command. 
+
+\item After completing today's seminar, you should be able to accomplish the following:
+  \begin{enumerate}
+  \item Learn how to load network data into R.
+  \item Generate simple and not-so-simple graphs out of network data. 
+  \item Obtain simple network characteristics out of network data.
+  \item Compare and interpret obtained network results. That's right, you are already network analysts!
+  \end{enumerate}
+
+\end {itemize}
+
+\textbf{\textit{Seminar 1 assignment.}} Using the instructions and the code in this file as a guide, answer questions in the \emph{Assignment} section. You should submit both the .Rmd and the .pdf files with results. Those who failed to install LaTex can submit Word-knitted files, but of course, you are very limited on options with just the Markdown file editing.
+
+\textbf{Seminar 1 deadline: Monday,  January 31, 2022 by 23:59.}. Note the short deadline - but luckily, you have a short assignment.
+
+\section{Reading network data in R}
+Please make sure your working directory is set to a folder where the data files are located; otherwise, you will be forced to provide a full path to data every time.
+
+Before we can do any manipulations on data, we have to read data into R. You have already seen that reading data means assigning it to an object of some sort by using the "<-" operator. That part was easy. But network data comes in many different forms, and we need to learn how to read different types of data. 
+
+Here is a short reference for loading data into R: \url{http://www.statmethods.net/input/importingdata.html}.
+
+To manipulate data, we need to have a set of packages with special commands (the list is provided above). Let's start by loading the "network" package.
+
+```{r}
+# This installs the network package
+## install.packages('network')
+# This loads the network package
+library(network)
+```
+
+\subsection{Creating a network object from the matrix data}
+One of the most common ways to represent a network is an \emph{edgelist}, or a list of ties. Once we have imported it into R, we can transform it into a network object using the \emph{network} package.
+
+\subsubsection{Generating a matrix of data} 
+
+We could use an existing data matrix, but it could be fun to create our own - so let's go ahead and do that. We are creating a matrix of data, or sociomatrix - one of the most common types of data.
+
+```{r}
+# We are first creating a variable that will tell matrix generator how many nodes to store. 
+# Let's have 15 nodes (you can choose any number).
+num_nodes <- 15
+# Next, generate the matrix using the build-in "matrix" command in R
+my_matrix<-matrix(round(runif(num_nodes*num_nodes)), # edge values
+                          nrow = num_nodes, #nrow must be same as ncol
+                          ncol = num_nodes)
+# Next, let's make sure there are no self-referencing loops 
+# (meaning, the node is not connected to itself)
+diag(my_matrix) <- 0
+# We can check dimensions of the new object:
+dim(my_matrix)
+# You should see that matrix dimensions are equal to the number of nodes you have specified. 
+# You can also check the class of your new dataset:
+class(my_matrix)
+# Let's check whether any data is missing:
+sum(is.na(my_matrix))
+```
+
+There should not be any missing data, because we have generated the matrix ourselves. However, with real-life data, it is not always the case, and with network data especially, missing data could be a problem. We will talk more about this in lectures.
+
+So, now let's go ahead and create an edgelist from our matrix. Command for doing so is "as.network," and you can learn more about it by reading the help files.
+
+```{r}
+# Command below shows the help file for the as.network command. 
+# Uncomment it to see the info.
+##?as.network
+my_network<-as.network(x = my_matrix, # the network object
+                  directed = TRUE, # specify whether the network is directed
+                  loops = FALSE, # do we allow self ties (should not allow them)
+                  matrix.type = "adjacency" # the type of input
+                  )
+```
+
+And now we have the network! 
+
+\subsubsection{Plotting the network}
+
+We can do our first tests on our newly created network:
+
+```{r, fig.width=6, fig.height=2.5}
+network.size(my_network)
+# Command below provides all information about the data and shows the matrix, 
+# from which we created the data. 
+# It could be helpful in case we did not start with the matrix first, but with the edgelist first. 
+# We commented it out, because the output takes a lot of space. 
+# Experiment with the command on its own in the console.
+## summary(my_network)
+
+```
+
+We will learn lots of ways to draw network plots (and will probably look at Gephi and Visone programs), but it all starts with the basic \emph{plot} command:
+
+```{r}
+# View your network:
+par(mar=c(1,1,1,1)) 
+# get rid of the large margins and plot the data.
+# margins are set in the order bottom-left-top-right. Don't ask.
+plot(my_network)
+```
+
+\subsection{Importing other data formats}
+Network data will generally come as a raw text file or as a file saved in another analysis tool. The package \emph{foreign} allows you to load several data formats with functions that follow the same syntax as to the \textbf{read.table()} function in base R.
+
+The following sniplet of code installs and provides information about a library "foreign," which allows you to read other data types into R. Uncomment the code to see what it does.
+
+```{r}
+##install.packages("foreign")
+##library(foreign)
+##?read.dta # reads STATA files
+##?read.xport  # reads SAS xport files
+```
+
+While \emph{foreign} will help you read data saved in other statistical packages, network data usually come as either raw text or from a specialized network analysis software such as UCINet. 
+
+
+\subsection{Adding network atributes}
+As we have talked, SNA is impossible without attributes. Attributes are any data that you want to add to your nodes (other than ties). As you are reading your network data, you can add attirbutes at the same time. All network packages have the option to add attributes, and the command is some variation of "add network attributes." The exact procedure depends upon the data you are working with - it usually reduces to manipulation of the files. Below, I demonstrate adding attributes for all data we read.
+
+\subsubsection{Reading a Pajek file}
+
+Pajek is an awesome network program, and if we have time, we'll look at it, though most of its capabailities are now incorporated in R. The package \emph{network} includes the function \textbf{read.paj()}, which allows you to load a Pajek project file into R. We will demo \textbf{read.paj()} reading data from a respondent-driven sample (RDS) study of drug users in Hartford, CT. This redacted dataset allows us to observe how the structure network data sampled through RDS differs from the structure of both complete and personal networks. The relation measured is referral into the study. Please remember that for the code below to work, the datafile, "drugnet2.paj," has to be in the same folder as your .Rmd file or where the console reads from.
+
+```{r, fig.width=6, fig.height=6}
+drugpaj <- read.paj('drugnet2.paj')
+names(drugpaj) # objects in drugpaj
+names(drugpaj$networks) 
+names(drugpaj$partitions)
+drug <- drugpaj$networks[[1]] # extract network
+class(drug)
+plot(drug)
+```
+
+### Assignment question 1
+\begin{itemize}
+\item What looks strange about this network? Why?
+\end{itemize}
+
+You can further examine the drug network:
+```{r}
+network.size(drug) # how many nodes?
+network.edgecount(drug) # how many edges?
+network.dyadcount(drug) # how many dyads?
+```
+
+### Assignment question 2
+\begin{itemize} 
+\item What do the numbers above represent?
+\end {itemize}
+
+Below is the code for for adding attributes from Pajek datafile, where they are usually stored as separate columns.
+
+```{r}
+names(drugpaj$partitions) # attributes included
+gender <- drugpaj$partitions[[1]] # extract gender
+gender #check the values assigned to each gender
+table(gender) # how many women/men
+# It is actually better to recode gender into 1 and 0 as opposed to 2 and 1; 
+# setting 0/1 variable as an attribute is cleaner that way.
+female <- ifelse(gender == 2, 1, # recode
+            ifelse(gender == 1, 0, NA))
+## set attributes
+drug <-set.vertex.attribute(drug, 'female', value=c(female)) 
+ethnicity <- drugpaj$partitions[[2]] # extract ethnicity 
+table(ethnicity) # how is it coded?
+drug <-set.vertex.attribute(drug, 'ethnicity', value=c(ethnicity))
+```
+
+\subsubsection{Reading a native R data file}
+One of the data packages, the Florentine Family network, we will be working with extensively in this class. Because it comes with R package, it is already in an R format. For the purposes of this class, we have extracted it as a separate file, which is provided in your Seminar 2 folder. 
+
+With native R files, the command is simply "load." 
+
+```{r}
+load('flo.Rdata')
+```
+
+Once the data is loaded, we can start manipulating it to turn it into a network, add attributes, and obtain all relevant network characteristics:
+
+```{r, fig.width=7, fig.height=3}
+flo.marriage <- as.network(as.matrix(flo.marriage), directed=FALSE) 
+flo.biz <- as.network(as.matrix(flo.biz), directed=FALSE)
+# Add attributes
+set.vertex.attribute(flo.marriage, 'wealth', flo.att[,2]) 
+set.vertex.attribute(flo.biz,'wealth', flo.att[,2])
+# Simple plots:
+par(mar=c(0,0,0,0)) 
+plot(flo.marriage)
+plot(flo.biz)
+```
+
+Of course, what fun would it be to have attributes and not plot them? Those attributes we have loaded we can now include in the graphs.
+
+```{r, fig.width=7, fig.height=3.5}
+# Look at networks with node sizes proportional to wealth
+# Notice that one of the option in this command is to set coordinates, so that pictures are equal.
+# Otherwise, plot with attributes may differ from the original plot (compare with plot above).
+par(mar=c(0,0,0,0)) 
+plot(flo.marriage,
+vertex.cex=(get.vertex.attribute(flo.marriage, 'wealth')/25 +.4),
+     displaylabels=TRUE,
+     label.cex=.5,
+     label.pos=0,
+     coord=plot(flo.marriage))
+```
+
+
+### Assignment question 3
+\begin{itemize}
+\item Please plot the biz network with node attributes that you've set above
+\end {itemize}
+
+
+\subsubsection{Importing UCINet files directly into R}
+UCINet files are space-delimited text files with a header. If you inspect the file, you can figure-out how to read it in R:
+\begin{enumerate}
+\item Open the UCINet file in R studio (as a text file)
+\item Note the line number where the data actually starts
+\item Read the file into R starting at that line number
+\item Use information from the header to name variables
+\end{enumerate}
+
+We will demo this process with Padgett's Florentine Families data, which we've seen already, and which is included as a part of a different set of data. Reading commands are different for .dat types of files, so please carefully step through the code below:
+
+```{r}
+# Read vertex labels with scan()
+flo.names <- scan('padgett.dat', what='character', skip=4, nlines=16) 
+# Read data with read.table()
+flos <- read.table('padgett.dat', skip=41, col.names=flo.names) 
+# Read node attributes:
+flo.att <- read.table('padgw.dat',
+col.names =c('WEALTH','NUM.PRIORS','NUM.TIES'), skip=25) 
+```
+
+In this network setup, marriage network and business networks are joined in one file. It could happen and with other data you use; sometimes, you need to separate the files. Code below shows how to break up files into needed chunks.
+
+```{r}
+# Separate adjacency matrices
+flo.marriage <-flos[1:16,]  # subset of the first 16 colums is the marriage network
+dim(flo.marriage)
+row.names(flo.marriage) <-flo.names # name
+flo.biz <- flos[17:32,] # subset of the second 16 is the business network.
+row.names(flo.biz) <-flo.names # name
+dim(flo.biz)
+# Check the data by listing a couple of rows and colums from each network.
+flo.marriage[1:2,1:2]
+flo.marriage[15:16,15:16]
+flo.biz[1:2,1:2]
+flo.biz[15:16,15:16]
+```
+
+Now that matrices are separated and set up in the way we need them to be set up, let's create networks from data and add attributes to nodes.
+
+```{r}
+flo.marriage <- as.network(as.matrix(flo.marriage),directed=FALSE) 
+flo.biz <- as.network(as.matrix(flo.biz),directed=FALSE)
+## add attributes
+set.vertex.attribute(flo.marriage, 'wealth', flo.att[,2]) 
+set.vertex.attribute(flo.biz,'wealth', flo.att[,2])
+```
+
+### Assignment question 4
+\begin{itemize}
+\item Using the code already shown, plot both of the new networks. Add attributes if you wish.
+\end{itemize}
+
+\section{Saving network data in R}
+If you will be using the dataset in R, it's best to save as `filename.Rdata' but if you plan on sharing the data, then you will want to save it as text. 
+
+```{r}
+# Save several objects in the same .Rdata file to load all at once 
+save(flo.marriage, flo.biz, file='floNets.Rdata')
+# Save network as an edgelist in a .csv file
+drug.edges <- as.matrix(drug, matrix.type='edgelist') 
+write.csv(drug.edges, file='drugsEdgelist.csv',row.names=FALSE)
+```
+
+
+### Assignment question 5
+
+\begin {itemize}
+\item For the network "drug" that we created and loaded with attributes, create several different network plots, adding gender and ethnicity to the graph as node attributes. Consider using a variety of colors to make your plot more informative.
+\end{itemize}
+
