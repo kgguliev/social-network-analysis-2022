@@ -1,0 +1,473 @@
+---
+title: "National Research University Higher School of Economics"
+subtitle: "Faculty of Social Sciences" 
+author: "Social Network Analysis, Spring 2022"
+date: "Seminar 3, February 1, 2022"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \setlength\headheight{33pt}
+- \fancyhead[L]{NRU HSE International Laboratory for Applied Network Research}
+- \rhead{\includegraphics[width = .1\textwidth]{ANR logo.png}}
+- \fancypagestyle{plain}{\pagestyle{fancy}}
+output: pdf_document
+pdf_document:
+          includes:
+            in_header: docstyle.sty
+toc: true
+toc_depth: 4
+
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+\begin{center}
+
+
+Stanislav Moiseev, PhD 
+
+
+\end{center}
+
+
+
+
+
+Welcome to the third seminar! By now, we hope, you are getting a feel for what we do in this course. Before attempting to run any code, please make sure you have every necessary package installed; however, pay attention. Today we will learn that some packages interfere with each other, so you will need to unload some before you can use others.  For today's seminar, the following files are posted in your dropbox:
+
+\begin{itemize}
+\item This document in PDF;
+  \item Prep files I used to generate the pdf. You will need to save all of them in the same folder in order to knit the pdf out of it.
+  \begin{itemize}
+  \item The RMD file
+  \item The docstyle.sty file where I keep all packages in order to generate a relatively good-looking document (well, as much as I bother to)
+  \item The png of our lab's logo
+\end{itemize}
+\item Dataset "flo.Rdata," "madmen.Rdata" and "trade.Rdata" - R files, some of them we've worked with already. 
+  \item Dataset "drugnet2.paj" in Pajek format - also an old friend.
+  \item Datasets: padgett.dat, padgw.dat - the .dat files from the last seminar.
+\end{itemize}
+  
+For today's assignment, you will need the following packages (remember, R is case sensitive, make sure, when installing packages, to keep the appropriate case:
+\begin{enumerate}
+  \item rmarkdown 
+  \item sna
+  \item network 
+  \item RColorBrewer
+  \item igraph
+  \end{enumerate}
+Remember that to use certain package, you need to make sure that the library is installed (using install.packages("packagename") command). To use a loaded package, you call it with "library.(packagename)" command.
+
+The goal of today's assignment is to learn how to work with data graphically. Therefore, you should be able to:
+\begin{itemize}
+  \item Generate simple and not-so-simple graphs out of network data. 
+  \item Obtain simple network characteristics out of network data.
+  \item Compare and interpret obtained network results. That's right, you are already network analysts!
+\end{itemize}
+
+\textbf{\textit{Seminar 3 assignment.}} Please answer the questions that are marked as \emph{Assignment questions}. Please include your answers right after each question in your RMarkdown file. You should submit both the .Rmd and the .pdf files with results. 
+
+\emph{Note:} This course is much more advanced, theoretically, than simply learning the tools and the software. Therefore, I do not want you to spend too much time fighting with pdf makers and other non-course-related issues. You are welcome to knit your assignment into Word if PDF does not work, though of course, PDF format will be preferable for your future work - try to get it to work eventually.
+
+\textbf{\textit{Homework assignment}} is provided at the end of this document.
+
+All assignments are due on \textbf{Monday, February 7, 2022 by 23:59}. All submissions must be sent via LMS. Late assignments are \textbf{not} accepted for \textbf{any} reason; at midnight on the due date the carriage turns into a pumpkin. If you do not submit your assignment by then, you get a grade of 0.
+
+\section{Drawing networks}
+
+There are multiple ways to draw networks, and the sky is the limit as far as R is concerned. I am showing you some of the very basic steps; the rest you'll have to figure out on your own as you are becoming more comfortable with R and network analysis.
+
+\subsection{Drawing with packages "sna" and "network"}
+These two packages (actually, \emph{network} is integrated with \emph{sna} - they "talk nicely" to each other) have a simple, intuitive set of commands for drawing networks. We'll start with our old file, Florentine families, to explore the possibilities.
+
+```{r}
+library(sna)
+load('flo.Rdata')
+flo.marriage <- as.network(as.matrix(flo.marriage), directed=FALSE) 
+flo.biz <- as.network(as.matrix(flo.biz), directed=FALSE)
+# Add attributes
+set.vertex.attribute(flo.marriage, 'wealth', flo.att[,2]) 
+set.vertex.attribute(flo.biz,'wealth', flo.att[,2])
+```
+
+As we've seen already,  it is intuitive to change network size based on wealth - the more wealth someone has, the biggier is the node. Here is the code fot the plot:
+
+```{r, fig.width=7, fig.height=3.5}
+# Look at networks with node sizes proportional to wealth
+# Notice that one of the option in this command is to set coordinates, so that pictures are equal.
+# Otherwise, plot with attributes may differ from the original plot (compare with plot above).
+
+par(mar=c(1,1,1,1)) 
+plot(flo.biz,
+      vertex.cex=(get.vertex.attribute(flo.biz, 'wealth')/25 +.4),
+      displaylabels=TRUE,
+      label.cex=.5,
+      label.pos=0,
+      main='Experimenting with Florentine graphs',
+      coord=plot(flo.biz))
+```
+
+You can also manipulate colors and shapes of the notes. For example, we can plot the drug network, coloring nodes by gender, and turn ethnicity into different shapes. It seemed the most intuitive to me to color gender as pink and blue, and shapes are whatever. ))
+
+```{r}
+#We've seen this before:
+drugpaj <- read.paj('drugnet2.paj')
+drug <- drugpaj$networks[[1]] # Extract network
+
+# Extract attributes:
+gender<-drugpaj$partitions[[1]]
+ethnicity <- drugpaj$partitions[[2]] 
+
+#Set vectors based on attributes.
+
+#Number of node sides allows to create different shapes (3=triangle, 4=square, etc.)
+sides<-ifelse(ethnicity==1,12, ifelse(ethnicity==2, 3, ifelse(ethnicity==3, 4, 6)))
+
+#Set colors by gender, including gray for undecided:
+colors<-ifelse(gender==2,"palevioletred",ifelse(gender==1,"royalblue2","gray8")) 
+
+par(mar=c(0,0,0,0)) # And the plot itself:
+plot(drug, vertex.col=colors, vertex.sides=sides, vertex.cex=1.5)
+
+```
+
+Let's further play with this idea on a different dataset, madmen.Rdata," the data for the sexual network of the TV show "Mad Men," which we extracted from the R package \emph{gcookbook}:
+
+```{r}
+library(network)
+load('madmen.Rdata')
+```
+
+If you check your Data tab in the upper right-hand corner you will see that 'madmen.Rdata' contains two files: "mad.att"" (obviously, the node attributes) and "mad.matrix"" (the matrix of data). We have seen such structure before and know how to extract data from these two types of files. Let's check whether the attributes and the adjacency matrix are in the same order:
+
+```{r}
+dim(mad.att)
+head(mad.att)
+mad.matrix[1:6,1:2]
+sum(as.character(mad.att[,1]) == colnames(mad.matrix))
+# Ok, everything looks fine, let's make the network:
+mad.net <- as.network(mad.matrix, directed=FALSE)
+# Let's look at attributes:
+mad.att
+# So apparently, we have at least gender that is relatively intuitive.
+# Now let's assign attributes to nodes, just as we did last seminar:
+set.vertex.attribute(mad.net,attrname='female', value=mad.att[,2]) 
+mad.net #check - we can see that nodes have the attribute "female"
+```
+
+## Assignment question 1 
+Why did we use option FALSE for command "directed" above, when creating a network?
+
+Now, let's plot the network, and then change graph structure by assigning different colors to nominal-type attributes:
+
+```{r}
+par(mar=c(1,1,1,1)) # set margins
+plot(mad.net)
+```
+
+Next, set colors by gender and plot the network together with the original coordinates:
+
+```{r}
+# We happen to know a few colors by heart and we assign them to color attributes
+colors <- ifelse(mad.att$Female == 1, 'indianred', 'cadetblue')
+
+# Setup the page by making smaller margins and putting two plots side-by-side:
+par(mar=c(0,0.5,0,0.5),mfrow=c(1,2)) #divide the space into one row, two columns
+
+#You can now see two networks side by side, one colored and one not:
+plot(mad.net, vertex.col = colors,coord=plot(mad.net))
+```
+
+##Assignment question 2
+Plot madmen network using node shapes for different genders.
+
+
+\subsection{Saving plots as separate files}
+
+It is entirely possible that you may need to extract a plot from your work and use it as a separate file. There are several options for saving graphical data outside of your R environment. After you execute commands below, plots will be saved as separate documents in your working directory.
+
+\subsubsection{Saving plots as  separate .pdf files}
+```{r}
+pdf('myplot.pdf', width=4, height=4) # width and height are in inches
+par(mar=c(0,0,0,0))
+plot(mad.net, vertex.col = colors, mode = 'fruchtermanreingold' )
+dev.off() # this function turns off the pdf-maker, otherwise program may get confused
+
+```
+\subsubsection{Saving plot as .png files}
+```{r}
+# Note that for png files height and width are given in pixels
+png('myplot.png')
+par(mar=c(0,0,0,0))
+plot(mad.net, vertex.col = colors)
+dev.off() #Important to turn off .png-maker as well
+```
+
+\subsection{Experimenting with network layouts}
+As we have talked, there is no single best way to plot data. Package \emph{network}, which we are working with, has different built-in network layouts: "circle," where vertex attributes are "forced" to create a circle, "fruchtermanreingold," which generates a layout based on force-directed placement algorithm of Fruchterman and Reingold, and "kamadakawai," which generates a vertex layout based on a version of Kamada-Kawai force-directed placement algorithm. You can find all the arguments that the last two layouts take by using the ?network.layout command. Let's look at the difference between them:
+
+```{r}
+par(mar=c(0,0,0,0))
+plot(mad.net, vertex.col = colors, mode = 'circle')
+plot(mad.net, vertex.col = colors, mode = 'fruchtermanreingold')
+plot(mad.net, vertex.col = colors, mode = 'kamadakawai')
+```
+
+## Assignment question 3
+Draw one of Florentine networks in different layouts. What do you observe?
+
+\subsection{Drawing in constant coordinates}
+In the previous section, we used the original plot to produce a second graph with colored nodes. But the problem is, the original plot would still change coordinates every time we redraw it. There is a way, of course, to produce constant coordinates. 
+
+To create a network in a constant set of coordinates, you have to generate the set of such coordinates - meaning, vectors of (x,y) locations in the Euclidian space. Of course, there are many ways, and I will show you the random option. Just remember that coordinates must indicate a position for every node on the network, meaning it has to be a matrix of (n=nodes) rows and 2 columns (first column is x coordinate, second - y coordinate).
+
+In the code below, I first determine the network size and pass it to the $n$ object, a scalar. Then, I randomly generate a list of numbers using the \emph{sample} command. The mathematical formula you use is really not that important. Of course, because you need to have two sets of random vectors (one for x and one for y), we generate two vectors: 
+
+```{r}
+n<-network.size(mad.net) # make n=number of nodes
+
+# Create random vectors of x and y coordinates
+x<-sample((0:(n-1))/n) #create a vector of random numbers
+y<-sample(x, n) # we can also rearrange the first vector to create a second
+
+# If you want to look at the values we've obtained, you can just call x and y 
+##x
+##y
+
+#Finally, bind them together into a matrix of coordinates:
+seedcoord<-cbind(x,y) # seed(starting) coordinates
+```
+Now, when you've examined the \emph{network.layout} option, you saw that for both the \emph{fruchtermanreingold} and \emph{kamadakawai} option you can pass the coordinates to the plot by using the functions \textbf{network.layout.kamadakawai(network, layout.par)} and \textbf{network.layout.fruchtermanreingold(network, layout.par)}. The \emph{layout.par} option is the option to which we feed our coordinates:
+
+```{r}
+# coordinates for kamadakaewai layout
+coordkk<-network.layout.kamadakawai(mad.net,layout.par = list(seed.coord = seedcoord))
+#coordinates for fruchtermanreingold:
+coordfg<-network.layout.fruchtermanreingold(mad.net, layout.par=list(seed.coord=seedcoord)) 
+```
+
+Now, all I have to do is now pass the coordinates I've set to the \emph{plot} function, using the \emph{coord=} command which we've seen before, when we set up coordinates equal to the coordinates of the randoly-generated florentine network. When I use the specified coordinates, the resulting plots will always have an identical layout. So below is the one version of the answer to this assignment question (to create a different network by employing some different network.layout option): I create a plot with vertices colored by gender, with labels (as requested), and in stable coordinates - to demonstrate it, I am using the same plot command in 2x2 matrix, so you can see that plots do not change.
+
+```{r}
+colors <- ifelse(mad.att$Female == 1, 'indianred', 'cadetblue') #set colors
+par(mar=c(0.5,0.5,0.5,0.5),mfrow=c(2,2))
+
+# Plots of networks with and without colors and labels, but in the same coordinates::
+plot(mad.net, vertex.col = colors, coord=coordkk) #two plots in KK layout
+plot(mad.net, coord=coordkk, displaylabels=TRUE, label.cex=0.4, label.pos=1) 
+plot(mad.net, coord=coordfg) #two plots in FG layout
+plot(mad.net, vertex.col = colors, coord=coordfg, displaylabels=TRUE, label.cex=0.4, label.pos=1)
+```
+
+## Assignment question 4
+Generate a set of constant coordinates, and draw both marriage and business Florentine networks in the same coordinates.
+
+
+\subsection{Experimenting with colors}
+
+Network graphs are all about making the information more clear; colors play a crucial role in this task. Fortunately, R provides us with a variety of ways to color-code our graphics. Let's explore one particular package that provides such functionality, \emph{RColorBrewer}. Start by (installing, for those who do not have it installed and) loading the package into your workspace.
+
+```{r}
+# This installs the RColorBrewer package
+## install.packages('RColorBrewer')
+# This loads the network package
+library(RColorBrewer)
+```
+Next, let's set up the page with appropriate margins (command "par") and divide it into a 2x3 set of rows and columns (command "mfrow"), so that our color palettes display neatly, and then explore the contents of the \emph{RColorBrewer} package.
+
+Each palette many colors, and the number of them differs somewhat depending on the palette. They can be sequential (which are great for ordered data, such as "on a scale from 1 to 5," where increasing color demonstrates increasing value), diverging or qualitative. Each palette has a name, and you have to call it by name. To explore the package, use the "?brewer.all" help request. 
+
+The coolest part about this package is you can look at your colors before you start using them: it's a "display" command. Let's look at the contents of the palette named "Paired." Note that in the parentheses we use number 12 - it's the number of colors in the palette that we obtained from the help file. This number will be different depending on the package you select.
+
+```{r}
+par(mar=c(2,2,2,2))
+display.brewer.pal(12, 'Paired')
+```
+
+Sometimes it's helpful to see several palettes side by side. Code below allows you to do that, though to make palettes easy to see, we only selected five colors from each.
+
+```{r}
+par(mar=c(1,1,1,1),mfrow=c(2,3))
+# Palettes come as matrices, where columns correspond to colors:
+display.brewer.pal(5, 'Accent')
+display.brewer.pal(5, 'Dark2')
+display.brewer.pal(5, 'Pastel1')
+display.brewer.pal(5, 'Set1')
+display.brewer.pal(5, 'Set2')
+display.brewer.pal(5, 'Set3')
+```
+
+
+You can use one or several palettes at a time. To use the palette you want, assign it to an object that will be easier to use. To not get confused, we name my sets based on the original palette name.
+
+```{r}
+# 
+col1 <- brewer.pal(5, 'Set1') #pick this set for bright colors
+colPastel<-brewer.pal(5, 'Pastel1') #pick this set for pastel colors
+
+# Assign colors from your chosen palette
+# Remember that the column in a palette corresponds to a color
+# We pick bright green and pale vanilla
+# They correspond to columns 3 and 5 in their respective palettes
+colors <- ifelse(mad.att$Female == 1, col1[3], colPastel[5])
+par(mar=c(0,0,0,0))
+plot(mad.net, vertex.col = colors )
+
+```
+
+\subsection{Drawing with package igraph}
+
+Here, I want to show you the capabilities of a new package, \emph{igraph}. Because this is a graphical package, it utilizes some of the same R functions as "network" package, and the two may conflict. Therefore, while not required, it is always advisable to unload the \emph{network} package before attempting to install and load \emph{igraph}.
+
+\subsubsection{The "trade" data}
+
+For this task, we will be working with yet another dataset, "trade." The data records interaction of the countries with respect to trade of manufactured goods, food and live animals, crude materials (not food), and minerals and fuels. An additional matrix records exchange of diplomats between countries. All trade (including the diplomants) flows from the row to the column for the matrix.
+
+The trade attribute data lists average population growth between 1970 and 1981, average GNP growth per capita over the same period, secondary school enrollment ratio in 1981, and energy consumption in 1981 (in kilo coal equivalents per capita). Load the data in order to explore it:
+
+
+```{r}
+# Load data and perform a few checks we already know:
+load('trade.Rdata')
+```
+
+The following objects should have loaded into your workspace:
+\begin{itemize}
+\item \textbf{trade.all} Sum of trade ties;
+\item \textbf{manufacture} Manufacture trade matrix;
+\item \textbf{food} Food trade matrix;
+\item \textbf{crude} Crude materials (not food, not oil, not minerals) trade matrix;
+\item \textbf{minerals} (Including oil and natural gas) trade matrix;
+\item \textbf{diplomacy} Diplomatic ties.
+\end{itemize}
+
+Please note that the first data matrix, trade.all, is simply a sum of all other matrices - in other words, it is a valued matrix that contains in the cells the number, indicating how many different flows (manufacture, food, crude, etc.) go from country A to country B. Other matrices are 0-1 matrices, indicating whether the ties are present.
+
+\subsubsection{Dichotomizing valued data}
+Many network analysis measures can only be calculated in dichotomous (tie present or absent) networks. Sometimes it will make sense to retain the valued data and sometimes you will need to reduce your data to a dichotomous network. For example, calcuating geodesic distances in some cases assumes that the network is binary; you can't find this measure on a valued network. There are, of course, many other measures that can only be applied to a 0-1 network, but which provide us with the wealth of data. So dichotomizing network data becomes an important issue.
+
+The valued network data that we will use for this example is the "trade.all" matrix. As said above, the cells of the matrix contain the sum of all other available trades. In a theoretical sense, this matrix contains information on whether trade ties are available, and the strength of the trade relationship between two countries can be inferred by the value of the cell - theoretically, the more, the higher.
+
+However, this network also provides a quick glance at whether any trade is present between two countries at all. Instead of looking for this information in all other matrices one at a time, we can quickly determine the tie presence from this matrix. Usually, for this purpose the data is dichotomized (cell contents are turned into 0-1 values).
+
+The process of dichotomizing the network is easy, but selecting the correct level at which to dichotomize is not. Everything is clear with a zero - there is no flow. But what if the value is anywhere from 1 to 5, with 5 indicating that trades in all five categories are present? Should each value be equal to 1, or should we make some of them zero? This is called selecting the correct level for dichotomizing, and we should keep in mind:
+
+1. Whether there is a theoretical justification for the cut-off we selected, and
+1. What are the impirical implications of this cut-off.
+
+Let's create several networks, each with a different level of dichotomy.
+
+```{r}
+# First, check what data we are dealing with
+class(trade.all)
+# we need a matrix
+trade.all<-as.matrix(trade.all)
+# First dichotomy is with any tie present, 
+# meaning 0 is a 0, and everything else is a 1:
+trade.any <- ifelse(trade.all > 0, 1, 0)
+# Second dichotomy is with any value greater than 1, 
+# so 0/1 become a 0, and everything else - a 1:
+trade.2 <- ifelse(trade.all > 1, 1, 0)
+# We can go on, but we will do the max, 
+# dichotomizing at 5 ties:
+trade.max <- ifelse(trade.all == 5, 1, 0)
+```
+
+\subsubsection{Plotting graphs}
+
+Let's plot these networks we've created by dichotomizing the trade.all data. We will be using the package \emph{igraph}, and you can find more information about the plotting options here: \url{http://igraph.sourceforge.net/doc/R/plot.common.html}.
+
+```{r}
+# Uncomment the code you need
+##install.packages("igraph")
+##detach(package:sna)
+##detach(package:network)
+library(igraph)
+```
+
+\emph{igraph} requires that we convert matrices into graph adjacency matrices as follows:
+
+```{r}
+tradegraph.any <-graph.adjacency(trade.any,
+    mode=c("directed"),
+    weighted=NULL,
+    diag=FALSE)
+tradegraph.2 <-graph.adjacency(trade.2,
+    mode=c("directed"),
+    weighted=NULL,
+    diag=FALSE)
+tradegraph.5 <-graph.adjacency(trade.max,
+    mode=c("directed"),
+    weighted=NULL,
+    diag=FALSE)
+```
+
+Now, let's plot these networks, at the same time exploring the various capabilities of the \emph{igraph} package:
+
+```{r}
+par(mar=c(0,0,0,0)) # you should know what this means
+# And the graphs themselves:
+plot(tradegraph.any,
+    vertex.size = 8,
+    edge.arrow.size = .2,
+    vertex.label.cex = .5,
+    vertex.color = 'aquamarine4',
+    edge.color='red',
+    vertex.shape = 'square',
+    vertex.label.dist = .5,
+    vertex.label.color = 'black')
+plot(tradegraph.2,
+    vertex.size = 10,
+    edge.arrow.size = .2,
+    vertex.label.cex = .5,
+    vertex.color = 'red',
+    edge.color='black',
+    vertex.shape = 'circle',
+    vertex.label.dist = .5,
+    vertex.label.color = 'black')
+plot(tradegraph.5,
+    vertex.size = 6,
+    edge.arrow.size = .3,
+    edge.color='gray',
+    vertex.label.cex = .5,
+    vertex.color = 'yellow',
+    vertex.shape = 'crectangle',
+    vertex.frame.color = 'green',
+    vertex.label.dist = .5,
+    vertex.label.color = 'black')
+```
+
+
+
+
+\section {Homework assignment}
+\begin{enumerate}
+\item We talked in class that for network analysis, the lines between descriptive and inferential analysis is blurred: most descriptive measures are automatically inferential. Examine the drug network we've drawn in this seminar. Does anything look odd to you? 
+\item For the drug network, draw the network with nodes colored by race. What do you conclude?
+\item Please examine the options in the "network.layout" command and perform the following on the madmen data: 
+\begin{itemize}
+\item Create the madmen.net with labels.
+\item Experiment with options by adding attributes, changing vertex or edge colors, finding the best position for labels. While this task may take a while, it will count as complete if you generate at least one graph that is different from the graphs I've shown you in this assignment. 
+\end{itemize}
+\item Think about the manipulations we are performing on the \emph{trade} network. With respect to dichotomizing, please answer the following:
+\begin{itemize}
+\item How would you justify any of these choices? 
+\item What are the impirical implication of these choices?
+\item What differences do you observe between the graphs where the cutpoint is any tie, at least two ties, and all ties present?
+\item What information can you gather from these observed differences to help you expand on your earlier theoretical justification of ties? Alternatively, does your theoretical justification seem reasonable in light of new information obtained from these graphs?
+\end{itemize}
+\item There are several networks in the "trade.Rdata" file, described above. We have fully explored the "trade.all" network. Now, select \emph{one} of the individual trade networks (manufacture, food, crude, etc.) and show me everything you've learned in this class so far. At the very minimum, please do the following:
+\begin{itemize}
+\item Create an appropriate graph with all possible options.
+\item Tell me what inferences you can make about your selected network based on the information you've obtained. Supplement your arguments with logic and theory.
+\end {itemize}
+
+\end{enumerate}
+
+
