@@ -180,9 +180,33 @@ The odd thing about the drug network is that there are a lot of missed connectio
 
 ## 2. For the drug network, draw the network with nodes colored by race. What do you conclude?
 
-```{r second questions, echo = TRUE}
+We see two clusters - for the 2nd and 3d ethnicity codes. These drug users are connected not only by their habit of using drugs but also by their ethnic identity. 
+
+```{r second question, echo = TRUE}
 
 
+drugpaj <- read.paj(paste0(path, "/data/drugnet2.paj"))
+drug <- drugpaj$networks[[1]] # Extract network
+
+# Extract attributes:
+ethnicity <- drugpaj$partitions[[2]]
+
+table(ethnicity)
+
+#Set colors by gender, including gray for undecided:
+colors <- dplyr::case_when(
+  ethnicity == 1 ~ "coral3",
+  ethnicity == 2 ~ "darkolivegreen1",
+  ethnicity == 3 ~ "darkslategray1",
+  ethnicity == 4 ~ "hotpink"
+)
+
+par(mar = c(0, 0, 0, 0)) # And the plot itself:
+plot(
+  drug,
+  vertex.col = colors,
+  vertex.cex = 1.5
+)
 
 ```
 
@@ -190,13 +214,61 @@ The odd thing about the drug network is that there are a lot of missed connectio
 
 ### 3.1 Create the madmen.net with labels
 
+```{r madmen with lables, echo = TRUE}
+par(mar = c(0, 0, 0, 0))
+plot(
+  mad.net,
+  displaylabels = TRUE
+)
+
+```
+
 ### 3.2 Experiment with options by adding attributes, changing vertex or edge colors, finding the best position for labels
+
+```{r experiment, echo = TRUE}
+
+set.seed(2022)
+par(mar = c(0, 0, 0, 0))
+plot(
+  mad.net,
+  displaylabels = TRUE,
+  label.pos = 0,
+  label.cex = .4,
+  vertex.cex = 1.5,
+  vertex.sides = sides,
+  vertex.col = sample(c("red", "blue", "yellow",
+                        "lightgreen", "mediumpurple2",
+                        "magenta2", "palevioletred3",
+                        "turquoise1", "steelblue"), 4)
+)
+
+```
 
 ## 4. Think about the manipulations we are performing on the trade network. With respect to dichotomizing, please answer the following
 
 ### 4.1 How would you justify any of these choices?
 
-### 4.2 What are the empirical implication of these choices?
+```{r justifications, echo = TRUE}
+
+load(paste0(path, "/data/trade.Rdata"))
+
+trade.all <- as.matrix(trade.all)
+
+# First dichotomy is with any tie present,
+# meaning 0 is a 0, and everything else is a 1:
+trade.any <- ifelse(trade.all > 0, 1, 0)
+
+# Second dichotomy is with any value greater than 1,
+# so 0/1 become a 0, and everything else - a 1:
+trade.2 <- ifelse(trade.all > 1, 1, 0)
+
+# We can go on, but we will do the max,
+# dichotomizing at 5 ties:
+trade.max <- ifelse(trade.all == 5, 1, 0)
+
+```
+
+### 4.2 What are the empirical emplication of these choices?
 
 ### 4.3 What differences do you observe between the graphs where the cutpoint is any tie, at least two ties, and all ties present?
 
@@ -205,6 +277,38 @@ The odd thing about the drug network is that there are a lot of missed connectio
 ## 5. select one of the individual trade networks (manufacture, food, crude, etc.) and show me everything you’ve learned in this class so far 
 
 ### 5.1 Create an appropriate graph with all possible options
+
+```{r network creation, echo = TRUE}
+
+library(dplyr)
+
+minerals_mat <- as.matrix(minerals)
+
+energy <- ifelse(trade.att[, 4] > median(trade.att[, 4], na.rm = TRUE), 3, 4)
+
+# 3 - triangle
+# 4 - square
+
+#head(minerals_mat, 4)
+
+minerals_net <- as.network(minerals_mat, directed = TRUE)
+
+network::set.vertex.attribute(minerals_net, attrname = "ENERGY", value = trade.att[, 4])
+
+set.seed(2222)
+par(mar = c(0, 0, 0, 0))
+plot(
+  minerals_net,
+  displaylabels = TRUE,
+  label.cex = .7,
+  label.pos = 1,
+  vertex.cex = 3.5,
+  vertex.col = network::get.vertex.attribute(minerals_net, "ENERGY") / 25 + .4,
+  vertex.sides = energy,
+  mode = "kamadakawai"
+)
+
+```
 
 ### 5.2 Tell me what inferences you can make about your selected network based on the information you’ve obtained. Supplement your arguments with logic and theory.
 
