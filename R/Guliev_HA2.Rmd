@@ -1,0 +1,210 @@
+---
+title: "Social Network Analysis: 2022"
+subtitle: "Home Assignment 2"
+author: Kirill Guliev, MA Comparative Social Research 
+date: "06 Feb 2022"
+output: word_document
+css: "my-style.css"
+toc: true
+---
+
+
+```{r setup, include = FALSE, echo = FALSE}
+
+knitr::opts_chunk$set(message = FALSE,
+                      warning = FALSE,
+                      fig.width = 7,
+                      fig.height = 3.5)
+
+path <- "C:/Users/Кирилл/Desktop/CSR2023/SNA/social-network-analysis-2022"
+
+```
+
+# Loading libs needed to answer assignment questions
+
+```{r libraries, echo = TRUE}
+
+library(sna)
+library(network)
+library(igraph)
+library(RColorBrewer)
+
+```
+
+# Answers on Assignment questions
+
+## Question № 1: Why did we use option FALSE for command “directed” above (_below_), when creating a network?
+
+```{r question 1, echo = TRUE}
+
+# path is specified in the very first chunk which is hidden
+
+load(paste0(path, "/data/madmen.Rdata"))
+
+mad.net <- as.network(mad.matrix, directed = FALSE)
+
+network::set.vertex.attribute(mad.net, attrname = "female", value = mad.att[, 2])
+
+
+```
+
+## Answer: 
+
+We define the argument `directed` to `FALSE` because the relations between MadMen TV-show are not directed but reciprocal. 
+
+## Question 2: Plot madmen network using node shapes for different genders
+
+## Answer:
+
+```{r males-females, echo = TRUE}
+
+# How many males and females in our data?
+
+table(
+  mad.att[, 2]
+)
+
+# 15 males and 30 females
+
+```
+
+We have 15 males and 30 females in a network.
+
+```{r madmen plotting, echo = TRUE}
+
+gender <- mad.att[, 2]
+
+sides <- ifelse(gender == 0, 7, 3)
+
+par(mar = c(0, 0, 0, 0))
+plot(
+  mad.net,
+  vertex.sides = sides,
+  vertex.cex = 1.5
+)
+
+```
+
+## Question 3: Draw one of Florentine networks in different layouts. What do you observe?
+
+## Answer:
+
+For Kamada & Kawai and Fruchetrman & Reingold layouts we observe that the length of edges is approximately equal for the whole network. Moreover, we see that edges in the network do not intersect (as these parameter is minimized by the algorithm). In the `circle` layout we see that nodes are situated in the plot in the circle pattern, edges are of different lengths, and there are a lot of intersections that make the plot difficult to read and analyze. 
+
+```{r florentine networks, echo = TRUE}
+
+load(paste0(path, "/data/flo.Rdata"))
+
+flo.marriage <- as.network(as.matrix(flo.marriage), directed = FALSE)
+
+flo.biz <- as.network(as.matrix(flo.biz), directed = FALSE)
+
+# Add attributes
+network::set.vertex.attribute(flo.marriage, "wealth", flo.att[, 2])
+network::set.vertex.attribute(flo.biz, "wealth", flo.att[, 2])
+
+# Plots
+
+par(mar = c(0, 0, 0, 0))
+
+plot(
+  flo.marriage,
+  vertex.col = network::get.vertex.attribute(flo.biz, 'wealth') / 25 + .4,
+  vertex.cex = 1.5,
+  display.labels = TRUE,
+  mode = "fruchtermanreingold"
+)
+
+plot(
+  flo.marriage,
+  vertex.col = network::get.vertex.attribute(flo.biz, 'wealth') / 25 + .4,
+  vertex.cex = 1.5,
+  display.labels = TRUE,
+  mode = "kamadakawai"
+)
+
+plot(
+  flo.marriage,
+  vertex.col = network::get.vertex.attribute(flo.biz, 'wealth') / 25 + .4,
+  vertex.cex = 1.5,
+  display.labels = TRUE,
+  mode = "circle"
+)
+
+```
+
+## Question 4: Generate a set of constant coordinates, and draw both marriage and business Florentine networks in the same coordinates.
+
+## Answer:
+
+```{r constant coordinates, echo = TRUE}
+
+nodes_n <- network.size(flo.marriage)
+
+x <- sample((0:(nodes_n - 1)) / nodes_n)
+
+y <- sample(x, nodes_n)
+
+coords <- cbind(x, y)
+
+# for Kamada & Kawai algorithm
+
+coord_kk <- network.layout.kamadakawai(flo.marriage, layout.par = list(seed.coord = coords))
+coord_kk_biz <- network.layout.kamadakawai(flo.biz, layout.par = list(seed.coord = coords))
+
+par(mar = c(0.5, 0.5, 0.5, 0.5), mfrow = c(1, 2))
+
+plot(
+  flo.marriage,
+  displaylabels = TRUE,
+  label.cex = .4,
+  label.pos = 1,
+  coord = coord_kk
+)
+
+plot(
+  flo.biz,
+  displaylabels = TRUE,
+  label.cex = .4,
+  label.pos = 1,
+  coord = coord_kk_biz
+)
+
+```
+
+# Answers on Homework Assignment
+
+## 1.  Examine the drug network we’ve drawn in the seminar 3. Does anything look odd to you?
+
+The odd thing about the drug network is that there are a lot of missed connections - in other words, a lot of nodes that do not have edges with others. So, it happens that these observations were reported as drug users but have no ties with others.  
+
+## 2. For the drug network, draw the network with nodes colored by race. What do you conclude?
+
+```{r second questions, echo = TRUE}
+
+
+
+```
+
+## 3. Please examine the options in the "network.layout" command and perform the following on the madmen data
+
+### 3.1 Create the madmen.net with labels
+
+### 3.2 Experiment with options by adding attributes, changing vertex or edge colors, finding the best position for labels
+
+## 4. Think about the manipulations we are performing on the trade network. With respect to dichotomizing, please answer the following
+
+### 4.1 How would you justify any of these choices?
+
+### 4.2 What are the empirical implication of these choices?
+
+### 4.3 What differences do you observe between the graphs where the cutpoint is any tie, at least two ties, and all ties present?
+
+### 4.4 What information can you gather from these observed differences to help you expand on your earlier theoretical justification of ties? Alternatively, does your theoretical justification seem reasonable in light of new information obtained from these graphs?
+
+## 5. select one of the individual trade networks (manufacture, food, crude, etc.) and show me everything you’ve learned in this class so far 
+
+### 5.1 Create an appropriate graph with all possible options
+
+### 5.2 Tell me what inferences you can make about your selected network based on the information you’ve obtained. Supplement your arguments with logic and theory.
+
