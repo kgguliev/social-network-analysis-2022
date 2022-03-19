@@ -1,0 +1,120 @@
+---
+title: "Social Network Analysis: 2022"
+subtitle: "Home Assignment 3"
+author: Kirill Guliev, MA Comparative Social Research 
+date: "20 Feb 2022"
+
+output: word_document
+
+
+toc: true
+---
+
+
+```{r setup, include = FALSE, echo = FALSE}
+
+knitr::opts_chunk$set(message = FALSE,
+                      warning = FALSE,
+                      
+                      fig.width = 7,
+                      fig.height = 4.5)
+
+path <- "C:/Users/Кирилл/Desktop/CSR2023/SNA/social-network-analysis-2022"
+
+```
+
+
+### Question 1: Can you figure out why the name "Medici" is familiar to us, and others - not so much? Which centrality, in your opinion, is the most "responsible"" for this?
+
+```{r load data, echo = T}
+
+suppressPackageStartupMessages(library(sna))
+load(paste0(path, "/data/flo.Rdata"))
+
+flo.marriage <- as.network(as.matrix(flo.marriage))
+
+detach(package:sna)
+
+suppressPackageStartupMessages(library(intergraph))
+
+flo.graph <- asIgraph(flo.marriage)
+
+suppressPackageStartupMessages(library(igraph))
+suppressPackageStartupMessages(library(CINNA))
+
+indegree <- degree(flo.graph, mode = "in")
+outdegree <- degree(flo.graph, mode = "out")
+total <- degree(flo.graph, mode = "total")
+between <- betweenness(flo.graph)
+close <-
+  closeness(flo.graph, mode = "in") #For out-closeness, mode will be mode="out."
+ecentV <- evcent(flo.graph)
+eigen <- ecentV$vector
+
+node <-
+  flo.att$flo.names # If you look at the attributes file, you'll find the names of families in the first column
+#Now, create the table that we need:
+table <- data.frame(node, indegree, outdegree, between, close, eigen)
+#Change the header names
+names(table) <-
+  c("Family",
+    "Indegree",
+    "Outdegree",
+    "Betweenness",
+    "Closeness",
+    "Eigenvector")
+
+knitr::kable(table, digits = 3, caption = "Florentine Families' Network Centralities")
+```
+
+### Answer
+
+The most suitable and "responsible" for Medici's prominence measure of centrality is Eigen value. It shows us that the Medici are the most powerful node with a large amount of social capital. Every other family has relations with Medici and the most number of nodes are dependent on it. From the mathematical point of view, the value of eigenvector centrality means that Medici's node is connected to other nodes with the most relative weight in the network. 
+
+### Question 2: From the long list of possible centralities, pick any five, plus Bonacich, Page Rank, and Katz, to analyze Florentine families
+
+```{r question 2, echo = T}
+#First, extract components from the flo.graph network:
+comps <- graph_extract_components(flo.graph)
+Comp1 <- comps[[1]] #We use the first component to extract centralities from
+
+pr_cent <- proper_centralities(Comp1)
+NewCent <- calculate_centralities(Comp1, include = pr_cent[pr_cent %in% c("Bonacich power centralities of positions",
+                                                                          "Page Rank",
+                                                                          "Katz Centrality (Katz Status Index)",
+                                                                          "BottleNeck Centrality",
+                                                                          "Closeness Centrality (Freeman)",
+                                                                          "Degree Centrality",
+                                                                          "Harary Centrality",
+                                                                          "Information Centrality")])
+NewCent <- as.data.frame(NewCent)
+# Remove node 12 from the list of names
+# Note how I have to do some acrobatics with data to accomplish this
+# Otherwise, R will turn all characters into numbers
+node <-
+  c(as.character(flo.att$flo.names[1:11]),
+    as.character(flo.att$flo.names[13:16]))
+#Add a column of names to the table
+# Make sure names are not converted back to numbers with stringsAsFactors = FALSE command:
+set.seed(2000)
+NewCent <- data.frame(node, NewCent, stringsAsFactors = FALSE)
+names(NewCent) <-
+  c("Family", "Bonacich", "PageRank", "BN",
+    "Freeman", "Degree", "Katz", "Information",
+    "Harary")
+
+knitr::kable(NewCent, digits = 3, caption = "Florentine Families' Additional Network Centralities")
+
+```
+
+### Answer
+
+Following methods were chosen:
+
+- Bottle Neck centrality measure as it represents the rank of nodes which are least and most connected to others;
+- Closeness centrality by Freeman as it represents the centralized estimate of a node;
+- Degree centrality measure as it represents the number of nodes adjacent to a given one;
+- Information centrality measure as it represents an index of all possible paths betwee a pair of nodes and weighted by a lambda value (information criteria);
+- Harary centrality measure as it represents the length of the shortest path towards the farthest node in a network. 
+
+As we may see from the table, _Bottle neck centrality_ and _Harary centrality_ does not significantly differentiate families. Those methods give every family approximately the same value as most families in our **connected** network have connections. However, all others methods of centrality measure emphasize the importance and influence of the Medici family among others Florentine families - the value of these methods for Medici is markedly higher.  

@@ -3,8 +3,9 @@ title: "Social Network Analysis: 2022"
 subtitle: "Home Assignment 2"
 author: Kirill Guliev, MA Comparative Social Research 
 date: "06 Feb 2022"
-output: word_document
-css: "my-style.css"
+output:
+  word_document:
+    css: "my-style.css"
 toc: true
 ---
 

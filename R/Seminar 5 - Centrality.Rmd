@@ -1,0 +1,225 @@
+---
+title: "National Research University Higher School of Economics"
+subtitle: "Faculty of Social Sciences" 
+author: "Social to Network Analysis, Spring 2021"
+date: "Seminar 5, February 15, 2022"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \setlength\headheight{33pt}
+- \fancyhead[L]{NRU HSE International Laboratory for Applied Network Research}
+- \rhead{\includegraphics[width = .1\textwidth]{ANR logo.png}}
+- \fancypagestyle{plain}{\pagestyle{fancy}}
+output: pdf_document
+pdf_document:
+          includes:
+            in_header: docstyle.sty
+toc: true
+toc_depth: 4
+
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+\begin{center}
+
+Stanislav Moiseev, PhD
+
+\small{(with deep appreciation to all used sources; references available in text and upon request)}
+
+\end{center}
+
+\noindent\rule{5cm}{0.4pt}
+
+Welcome to the 5th seminar! By now, you should be much more comfortable with running the code. Before attempting to run any code, please make sure you have every necessary package installed. 
+
+\begin{itemize}
+\item In your folder, you will find the following files:
+  \begin{enumerate}
+  \item This file, "Seminar 4," in .pdf format.
+  \item Prep files I used to generate the pdf. You will need to save all of them in the same folder in order to knit the pdf out of it.
+  \begin{itemize}
+  \item The RMD file
+  \item The docstyle.sty file where I keep all packages in order to generate a relatively good-looking document (well, as much as I bother to)
+  \item The png of our lab's logo
+  \end{itemize}
+  \item Dataset "flo.Rdata," which we are already familiar with.
+  \end{enumerate}
+
+\item For today's assignment, you will need the following packages (remember, R is case sensitive, make sure, when installing packages, to keep the appropriate case).
+\begin{enumerate}
+  \item rmarkdown, RColorBrewer - our editing packages 
+  \item sna, igraph - these are our old network-analytic friends
+  \item intergraph - for conversion from igraph to network and vice versa 
+  \item knitr - package to help create better-looking output
+  \item CINNA - for calculating many, many centralities that there are out there. Not all, but about 10\% of what's available.
+  \end{enumerate}
+Remember that to use certain package, you need to make sure that the library is installed (using install.packages("packagename") command). To use a loaded package, you call it with "library.(packagename)" command. 
+
+\item After completing today's seminar, you should be able to accomplish the following:
+  \begin{enumerate}
+  \item Obtain simple network characteristics out of network data.
+  \item Obtan more interpretative characteristics out of network data.
+  \item Compare and interpret obtained network results. That's right, you are already network analysts!
+  \end{enumerate}
+
+\end {itemize}
+
+\textbf{\textit{Seminar 5 assignment.}} Using the instructions and the code in this file as a guide, answer questions in the \emph{Assignment} section. You should submit both the .Rmd and the .pdf files with results.
+
+\textbf{Seminar 4 deadline: February 21, 2022 by 23:59.}
+
+\section{Centrality}
+Centrality plays a paramount role in network analysis. In fact, on the node level, everything starts and ends with centrality. There are over 400 types of centrality, and I encourage you to explore them on your own. )) I will show you a few and tell you where to find more.
+
+```{r}
+##install.packages("sna")
+library(sna)
+
+# Load data and create networks:
+load('flo.Rdata')
+flo.marriage<-as.network(as.matrix(flo.marriage))
+```
+
+\subsubsection{From network to igraph}
+Because most centrality measures originated in graph theory, \emph{igraph} package has more of them built in. There is also a way to easily convert network files between the two formats, executed in the package \emph{intergraph}. Let's try that:
+
+```{r}
+detach(package:sna) #detach sna package
+library(intergraph) # make sure it's installed first
+
+#Convert flo.marriage to a graph object:
+flo.graph<-asIgraph(flo.marriage) 
+
+```
+
+Now that we have a graph object, we can calculate some centralities.
+
+\subsubsection{Degree centrality}
+Degree centrality, as expected, tells us the incoming and outgoing ties in different combinations. There are three most common measures of degree centrality: indegree, outdegree and Freeman's degree. \textbf{Indegree centrality} measures how many people are directly connected to the individual. \textbf{Outdegree centrality} measures how many people the actor directly connects to. 
+
+```{r}
+library(igraph) #do not forget to attach the library
+indegree <- degree(flo.graph, mode="in")
+outdegree<-degree(flo.graph, mode="out")
+total<-degree(flo.graph, mode="total") # This is also called Freeman's degree
+```
+
+This centrality is intuitive and does not require much explanation.
+
+\subsubsection{Betweenness, closeness, eigenvector}
+Three other common centrality measures - betweenness, closeness and eigenvector - are similarly easily calculated. \textbf{Betweenness centrality} measures the number of shortest paths going through a specific vertex; it is returned by the betweenness() function:
+```{r}
+between<-betweenness(flo.graph)
+between
+```
+
+\textbf{Closeness} is the mean geodesic distance between a given node and all other nodes with paths from the given node to the other node. This is close to being the mean shortest path, but geodesic distances give higher values for more central nodes. In a directed network, we can think of in-closeness centrality as the average number of steps one would have to go through to get TO a given node FROM all other reachable nodes in the network. Out-closeness centrality, not surprisingly, measures the same thing with the directionality reversed. 
+
+Closeness, as many centralities, is finicky - it only works well for connected graphs. Let's look at our graph:
+```{r}
+par(mar=c(0,0,0,0))
+plot(flo.graph)
+
+```
+
+There is one node that is disconnected from the rest. You should, however, still get closeness centrality to calculate, even though you might get a warning:
+
+```{r}
+close<-closeness(flo.graph, mode="in") #For out-closeness, mode will be mode="out." 
+#For these data, it's irrelevant as the data are not directed.
+close
+```
+
+
+\textbf{Eigenvector centrality} gives greater weight to a node the more it is connected to other highly connected nodes. A node connected to five high-scoring nodes will have higher  eigenvector centrality than a node connected to five low-scoring nodes. Thus, it is often interpreted as measuring a node's network importance.
+
+In directed networks, there are 'In' and 'Out' versions. In information flow studies, for instance, In-Eigenvector scores would reflect which nodes are high on receiving information, while Out-Eigenvector scores would reflect which nodes are high on broadcasting information. 
+
+For these data, we will simply symmetrize to generate an undirected eigenvector centrality score.Eigenvector centrality takes a couple of steps. Note that, unlike the other centrality measures, evcent() command returns a complex object rather than a simple vector. Thus, we need to first get the evcent() output and then select the eigenvector scores from it.
+
+```{r}
+ecentV<-evcent(flo.graph)
+eigen<-ecentV$vector
+eigen
+```
+
+\subsubsection{Looking at all centralities at once}
+For substantive analysis, we want to compare degrees to each other. The easiest way to do so is by putting them all in one table. But I also want to show you the capabilities of yet another package in R, \emph{knitr}.
+
+What I do first is create a table that will contain the node names (we'll pull them out of the attributes file), and then all centralities we've obtained:
+```{r}
+node<-flo.att$flo.names # If you look at the attributes file, you'll find the names of families in the first column
+#Now, create the table that we need:
+table<-data.frame(node, indegree, outdegree, between, close, eigen) 
+#Change the header names
+names(table)<-c("Family","Indegree","Outdegree","Betweenness","Closeness","Eigenvector")
+```
+Now that the prep work is done, let's create the nice-looking table:
+
+```{r}
+library(knitr)
+kable(table, digits=3, caption = "Florentine Families' Network Centralities")
+```
+
+\subsubsection{The many other centralities}
+Normally, I would stop my seminar on centralities right about here. However, just a few basic ones are not enough to understand networks. So here we go: here is a glimpse at about one-tenth of other centralities that are out there.
+
+There is a package called \emph{CINNA} (Deciphering Central Informative Nodes in Network Analysis), which calculates some very large number of possible centralities. It's a bit finicky: for example, it would only calculate them on the \emph{igraph} objects, and only for the connected components of the network. On one hand, it makes sense; on another, you have to first break up your network into components and then calculate what you need on individual components. But the results are worth it, so let's give it a try.
+
+```{r}
+library(CINNA)
+#First, extract components from the flo.graph network:
+comps<-graph_extract_components(flo.graph)
+#Let's look at them:
+comps
+
+```
+
+We obviously need the first component, because it contains the large connected component as opposed to the single node. The rest of the work we do with that. There is a command, \emph{"proper\_centralities"}, that allows us to see all centralities that could be calculated on a given component. There are many of them, so it's best to give the object a name when we create a list of possible centralities.
+
+```{r}
+Comp1<-comps[[1]] #We use the first component to extract centralities from
+pr_cent<-proper_centralities(Comp1) 
+
+```
+
+Now, from this list of about fifty, we can calculate the ones we want (here, I take the first five plus Katz - it has a lot of meaning in interpreting power relationships). Of course, we can turn them into a nice table, and present them to the world. The command is simply \emph{"calculate\_centralities"}.
+
+Please remember that this is for the \textbf{first component only}. One node, #12, is missing from this component - remember, it was stand-alone, when we graphed it? Therefore, if we want to provide a column with family names, we need to remove node 12 from the list:
+
+```{r}
+NewCent<-calculate_centralities(Comp1, include = c(pr_cent[1:5], pr_cent[19]))
+NewCent<-as.data.frame(NewCent)
+# Remove node 12 from the list of names
+# Note how I have to do some acrobatics with data to accomplish this
+# Otherwise, R will turn all characters into numbers 
+node<-c(as.character(flo.att$flo.names[1:11]),as.character(flo.att$flo.names[13:16])) 
+#Add a column of names to the table 
+# Make sure names are not converted back to numbers with stringsAsFactors = FALSE command:
+NewCent<-data.frame(node,NewCent, stringsAsFactors = FALSE) 
+names(NewCent)<-c("Family", "Alpha", "Bonacich", "Page Rank", "Average Distance", "BaryCenter","Katz")
+kable(NewCent, digits=3, caption = "Florentine Families' Additional Network Centralities")
+```
+
+
+
+\section {Seminar assignment}
+\begin{enumerate}
+\item Take a carefull look at the table with Florentine family centralities. Can you figure out why the name "Medici" is familiar to us, and others - not so much? Which centrality, in your opinion, is the most "responsible"" for this? 
+\item From the long list of possible centralities, pick \emph{any} five, plus Bonacich, Page Rank, and Katz, to analyze for Florentine families. 
+\begin{itemize}
+\item Obviously, this should not be random. READ about centralities and find the ones that you would think are appropriate for the Florentine families.
+\item Briefly describe the chosen centralities. You will see why I chose Bonacich, Page Rank and Katz for you to learn.
+\item Create a nice-looking table of these centralities for Florentine Families.
+\item Look at Medici now. Did any of your conclusions (from above) change? What have you learned with these new centralities that was not obvious earlier?
+
+\end{itemize}
+
+\end{enumerate}

@@ -1,0 +1,201 @@
+---
+title: "Social Network Analysis: 2022"
+subtitle: "Home Assignment 4"
+author: Kirill Guliev, MA Comparative Social Research 
+date: "17 March 2022"
+output: word_document
+toc: true
+---
+
+
+```{r setup, include = FALSE, echo = FALSE}
+
+knitr::opts_chunk$set(message = FALSE,
+                      warning = FALSE,
+                      
+                      fig.width = 7,
+                      fig.height = 4.5)
+
+path <- "C:/Users/Кирилл/Desktop/CSR2023/SNA/social-network-analysis-2022"
+
+```
+
+## Choose a dataset from one of our previous labs + prepare data
+
+```{r pull data, echo = TRUE}
+
+library(NetData)
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(igraph))
+
+data(kracknets, package = "NetData")
+
+non_zero_ties <- krack_full_data_frame %>% 
+  filter(
+    advice_tie > 0 | friendship_tie > 0 | reports_to_tie > 0
+  )
+
+kracks <- graph.data.frame(non_zero_ties)
+summary(kracks)
+
+# remove 0 ties 
+
+krack_friend <- delete.edges(kracks, E(kracks)[E(kracks)$friendship_tie == 0])
+krack_advice <- delete.edges(kracks, E(kracks)[E(kracks)$advice_tie == 0])
+krack_reports <- delete.edges(kracks, E(kracks)[E(kracks)$reports_to_tie == 0])
+
+krack_friend_und <- as.undirected(krack_friend, mode ='collapse')
+krack_friend_no_iso <- delete_vertices(krack_friend_und, V(krack_friend_und)[degree(krack_friend_und) == 0])
+```
+
+## Perform several community detection algorithms. Compare them
+
+### Walktrap community detection
+
+```{r community detection, echo = TRUE}
+
+library(lsa)
+
+friend_comm_wt <- walktrap.community(krack_friend_no_iso, steps = 200, modularity=TRUE)
+modularity(friend_comm_wt)
+
+friend_comm_dend <- as.dendrogram(friend_comm_wt, use.modularity = TRUE)
+
+par(mar=c(1,0,1,0))
+plot(friend_comm_dend)
+
+```
+
+### Spectral community detection 
+
+```{r spectral community detection, echo = TRUE}
+
+coords <- layout_with_fr(krack_friend_no_iso)
+
+SCD <- cluster_leading_eigen(krack_friend_no_iso)
+modularity(SCD)
+
+set.seed(2022)
+par(mar = c(0, 0, 0, 0))
+plot(SCD, krack_friend_no_iso, layout = coords)
+
+```
+
+### Comparison
+
+```{r comparison, echo = TRUE}
+
+sizes(friend_comm_wt)
+sizes(SCD)
+
+length(friend_comm_wt)
+length(SCD)
+
+```
+
+We received 5 clusters in Walktrap community detection algorithm and 2 clusters in Spectral community detection method. In the __walktrap__ algorithm, where we conduct several random walks and assume that vertices encountered are more likely to be within a certain community, we received 5 communities of nodes (2, 2, 12, 4 and 1 in size respectfully). In the __spectral community detection__ method, where we explore the leading eigenvector, we received 2 communities - 9, and 12 nodes in size respectfully.
+
+From the very first sight it seems that spectral community detection method gives us more balanced and, so to say, generalized communities in terms of their sizes. However, we can evaluate performance of the algorithms by finding the ratio of their modularities. 
+
+```{r modularity ratio, echo = TRUE}
+
+round(modularity(SCD) / modularity(friend_comm_wt),2 )
+
+```
+
+Judging by the received ratio we can say that the modularity of spectral community detection method is more than the modularity of walktrap method. So, it performs much better. 
+
+## Exploratory Block Model
+
+```{r block modeling, echo = TRUE}
+
+library(network)
+library(sna)
+
+formal <- as.matrix(read.csv(paste0(path, "/data/formal.csv"), header = TRUE, row.names = 1))
+roles <- read.csv(paste0(path, "/data/roles.csv"), header = TRUE, row.names = 1)
+
+
+formalnet <- network(formal)
+par(mar = c(0, 0, 2, 0))
+indeg <- degree(formalnet, cmode = 'indegree')
+mycoord <- plot(
+  formalnet,
+  displaylabels = TRUE,
+  edge.col = 'azure4',
+  vertex.col = "#E41A1C",
+  vertex.border = 'azure4',
+  vertex.cex = indeg + 1 ,
+  main = 'Downton Abbey',
+  label.cex = 0.5,
+  label.pos = 5
+)
+
+
+orRule <- network(symmetrize(formalnet, rule = 'weak'),
+                  directed = FALSE) # 'or' rule
+andRule <- network(symmetrize(formalnet, rule = 'strong'),
+                   directed = FALSE) # 'and' rule
+
+snasymmformal <- orRule
+
+
+distformal <- dist(snasymmformal, method="euclidian", diag=FALSE)
+thick <- as.vector(distformal) 
+formalclust <- hclust(distformal, method="complete")
+
+# Exploratory ----
+
+exploratoryformal <- blockmodel(
+  snasymmformal,
+  formalclust,
+  k = 4,
+  block.content = "density",
+  mode = "graph",
+  diag = FALSE
+)
+
+par(mar=c(0,0,2,0))
+
+plot.blockmodel(exploratoryformal)
+
+heatmap(exploratoryformal[[4]], main ='Exploratory Blockmodel, k = 4')
+```
+
+### k = 5
+
+```{r k equals 5, echo = TRUE}
+
+exploratoryformal5 <- blockmodel(
+  snasymmformal,
+  formalclust,
+  k = 5,
+  block.content = "density",
+  mode = "graph",
+  diag = FALSE
+)
+
+heatmap(exploratoryformal5[[4]], main ='Exploratory Blockmodel, k = 5')
+plot.blockmodel(exploratoryformal5)
+
+```
+
+### k = 8
+
+```{r k equals to 8, echo = TRUE}
+
+exploratoryformal8 <- blockmodel(
+  snasymmformal,
+  formalclust,
+  k = 8,
+  block.content = "density",
+  mode = "graph",
+  diag = FALSE
+)
+
+heatmap(exploratoryformal8[[4]], main ='Exploratory Blockmodel, k = 8')
+plot.blockmodel(exploratoryformal8)
+
+```
+
+It seems like there is no need to vary `k`, because 4 clusters is an optimal number. There are no changes in heatmaps when we are trying to change the number of clusters.  

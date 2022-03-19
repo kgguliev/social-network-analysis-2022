@@ -1,0 +1,462 @@
+---
+title: "National Research University Higher School of Economics"
+subtitle: "Faculty of Social Sciences" 
+author: "Social Network Analysis, Spring 2022"
+date: "Seminar 8, March 12, 2022"
+header-includes:
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \setlength\headheight{33pt}
+- \fancyhead[L]{NRU HSE International Laboratory for Applied Network Research}
+- \rhead{\includegraphics[width = .1\textwidth]{ANR logo.png}}
+- \fancypagestyle{plain}{\pagestyle{fancy}}
+output: pdf_document
+pdf_document:
+          includes:
+            in_header: docstyle.sty
+toc: true
+toc_depth: 4
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+\begin{center}
+
+Stanislav Moiseev, PhD
+
+\small{(with deep appreciation to all used sources; references available in text and upon request)}
+
+\end{center}
+
+\noindent\rule{5cm}{0.4pt}
+
+Welcome to the next seminar! We are continuing our exploration of the modeling process, and today we are working on detecting structures. 
+
+Seminar assignment is the usual - using the instructions and the code in this file as a guide, answer questions in the \emph{Assignment} sections. You should submit both the .Rmd and the .pdf files with results.
+
+\textbf{Homework 3 deadline: March 19, 2021 by 23:59.}
+
+
+\begin{itemize}
+\item In your seminar folder, you will find the following files:
+  \begin{enumerate}
+  \item This file, "Seminar 8," in .pdf format.
+  \item RMD file for this seminar. All other prep files are the same as before; load them from other folders.
+  \item Data files "formal.csv," "roles.csv," "flo.Rdata"
+  \end{enumerate}
+
+\item For today's assignment, you will need the following packages (remember, R is case sensitive, make sure, when installing packages, to keep the appropriate case).
+\begin{enumerate}
+  \item rmarkdown, RColorBrewer - our editing packages 
+  \item sna, network, igraph - these are our old network-analytic friends
+  \item intergraph - for conversion from igraph to network and vice versa 
+  \item knitr - package to help create better-looking output
+  \item NetData - library with datasets
+  \item cluster, nFactors, NetCluster, lsa - community detection libraries
+  \end{enumerate}
+Remember that to use certain package, you need to make sure that the library is installed (using install.packages("packagename") command). To use a loaded package, you call it with "library.(packagename)" command. 
+
+\item After completing today's seminar, you should be able to accomplish the following:
+  \begin{enumerate}
+  \item Learn how to find common structures and find communities within networks.
+  \item Learn how to perform blockmodeling analysis.
+  \item And more if we will have some time:)
+  \end{enumerate}
+
+\end {itemize}
+
+
+\section{Community detection}
+
+\subsection{Loading and formatting data}
+Now we will work with another package from \emph{NetData} package, called "studentnets.M182." 
+
+As you know, datasets in this package are stored as a data frame, which you already know how to work with. Today, we will be applyng \emph{igraph} commands to extract network into a graph object.
+
+```{r}
+
+library(NetData)
+# Pull the dataset out - same way as we did with Kracknets:
+data(studentnets.M182, package = "NetData")
+
+# Check the data we have in the dataset:
+head(m182_full_data_frame)
+```
+
+This dataset has information on students and their ties - friendship, social and task (apparently, doing homework together or some other similiar type of connection). So unlike last week, when in our \emph{kracknets} we had only one column with ties, today we have three. 
+
+Remember, unlike edgelist, the dataframe stores a product of every single node with every single other node, where absense of ties is coded as 0. Even a brief look at the data shows us that we have lots of nodes with no ties to other nodes - they appear as all zeros in the last three columns. You already know how to work with \emph{subset} command, and understand what it means to remove non-zero edges, so the code below does just that. One departure from last week: we are removing edges where ALL connections are absent, so this part of the code "friend_tie > 0 | social_tie > 0 | task_tie > 0" tells the program to extract a set of data where friend ties OR social ties AOR task ties are greater than zero:
+
+```{r}
+m182_full_nonzero_edges <- subset(m182_full_data_frame, 
+  (friend_tie > 0 | social_tie > 0 | task_tie > 0))
+head( m182_full_nonzero_edges) # Check what's left
+```
+
+OK, better. Please note that in each individual column we still have zeros - this is because we removed only the edges where ALL connections were zeros. It is entirely possible that some may have connection of one type, but not the other - and so they remained in the dataset. Now we just create a graph object out of our data frame (as I have told you, dataframe can become any object), and for that we need the \emph{igraph} package:
+
+```{r}
+library(igraph)
+m182_full <- graph.data.frame(m182_full_nonzero_edges) 
+summary(m182_full) #check the data
+```
+
+Now, we break up the full graph into subgraphs based on the type of a tie. Also, pay attention at the command I use: I remove the zero edges from each network. 
+
+```{r fig.height = 3, fig.width = 5}
+#m182_fullnet<-as.network(m182_full_nonzero_edges)
+m182_friend <- delete.edges(m182_full, E(m182_full)[E(m182_full)$friend_tie==0])
+m182_social <- delete.edges(m182_full, E(m182_full)[E(m182_full)$social_tie==0])
+m182_task <- delete.edges(m182_full, E(m182_full)[E(m182_full)$task_tie==0]) 
+ 
+
+# You can check your data by uncommenting the following commands:
+##m182_friend
+##m182_social
+##m182_task
+
+# Look at the plots for each sub-graph
+friend_layout <- layout.fruchterman.reingold(m182_friend)
+par(mar=c(0,0,1,0))
+plot(m182_friend, layout=friend_layout, edge.arrow.size=.5)
+social_layout <- layout.fruchterman.reingold(m182_social)
+plot(m182_social, layout=social_layout, edge.arrow.size=.5)
+task_layout <- layout.fruchterman.reingold(m182_task)
+plot(m182_task, layout=task_layout, edge.arrow.size=.5)
+
+```
+\section{Community detection - various methods}
+We'll use the friend sub-graph as the basis for our community detection methods. For clarity and simplicity, we'll set the network to undirected and remove isolated vertices. Comparing m182_friend before and after these operations, you'll notice that the number of edges decreases as reciprocated directed ties are consolidated into single undirected ties, and the number of vertices decreases as isolates are removed.
+
+```{r}
+m182_friend_und <- as.undirected(m182_friend, mode='collapse')
+m182_friend_no_iso <- delete_vertices(m182_friend_und, V(m182_friend_und)[degree(m182_friend_und)==0])
+
+```
+
+There are many different ways to detect communities. In this lab, we'll use: hierarchical NetCluster, walktrap, edge-betweenness, greedy community detection, spectral community detection, and optimal community detection. As you use them, consider how they portray clusters and consider which one(s) afford a sensible view ofthe social world as cohesively organized. 
+
+Let's start with looking at our data. 
+
+```{r fig.height = 3, fig.width = 5}
+library(lsa)
+coords=layout_with_fr(m182_friend_no_iso)
+par(mar=c(0,0,1,0))
+plot(m182_friend_no_iso, layout=coords, vertex.label=NA, vertex.size=10)
+```
+
+\subsection{Distance matrix and Hierarchical clustering}
+The first step is to coerce our data into an adjacency matrix.
+```{r}
+m182_friend_matrix <- get.adjacency(m182_friend_no_iso)
+#m182_friend_matrix #<-uncomment the matrix if you want to see it
+```
+Next, we can use Euclidian distances to create a distance matrix. We use the built-in function dist() to compute a "distance matrix" showing how structurally dissimilar each vertex is to each other vertex. Note that higher values indicate greater dissimilarity.
+```{r}
+m182_friend_dist <- dist(m182_friend_matrix)
+m182_friend_dist
+```
+What we have to do next is hierarchical clustering, a method of data clustering based not on even clusters, but on clusters as subclusters of larger structures (you may have seen this method in your previous statistical courses). I've shown you the picture of it in the lecture, but here is another example:
+
+\includegraphics[width=300pt]{"Cluster"}
+
+Command for doing so is just "hclust," it's an R-native command. hclust() performs a hierarchical agglomerative NetCluster operation based on the values in the dissimilarity matrix yielded by dist() above. 
+
+```{r}
+m182_friend_hclust <- hclust(m182_friend_dist)
+```
+
+The default way to visualize clusters is a tree structure called a dendrogram. The y-axis values on the dendrogram show the Euclidean distances between nodes. Since the hclust() default is complete linkage, the distances between one or more nodes and a cluster of nodes is the Euclidean distance of the two nodes  farthest apart.
+```{r fig.height = 3, fig.width = 5}
+par(mar=c(0,0,1,0))
+plot(m182_friend_hclust)
+
+```
+
+\subsection{Walktrap}
+This algorithm detects communities through a series of short random walks, with the idea that the vertices encountered on  any given random walk are more likely to be within a community than not. The algorithm initially treats all nodes as communities of their own, then merges them into larger communities, and these into still larger communities, and so on.
+
+In each step a new community is created from two other communities, and its ID will be one larger than the largest community ID so far. This means that before the first merge we have $n$ communities (the number of vertices in the graph) numbered from zero to $n-1$. The first merge creates community $n$, the second community $n+1$, etc. This merge history is returned by the function.
+
+```{r}
+friend_comm_wt <- walktrap.community(m182_friend_no_iso, steps=200,modularity=TRUE)
+friend_comm_wt
+```
+
+As with hierarchical NetCluster above, we can also visualize the clusters generated by walktrap as a dendrogram (but note that the clusters themselves may be different). Here, the y-axis reflects the distance metric used by the walktrap algorithm; for more on this, see Pascal Pons, Matthieu Latapy: Computing communities in large networks using random walks, http://arxiv.org/abs/physics/0512106.
+
+```{r fig.height = 3, fig.width = 5}
+friend_comm_dend <- as.dendrogram(friend_comm_wt, use.modularity=TRUE)
+par(mar=c(1,0,1,0))
+plot(friend_comm_dend)
+
+```
+Note that the values on the x-axis are the distance metric for the walktrap algorithm, which is described in Pons & Latapy paper. 
+
+\subsection{Edge betweenness method}
+The edge-betweenness score of an edge measures the number of shortest paths from one vertex to another that go through it.  The idea of the edge-betweenness based community structure detection is that it is likely that edges connecting separate cluster have high edge-betweenness, as all the shortest paths from one cluster to another must traverse through them. So if we iteratively remove the edge with the highest edge-betweenness score we will get a hierarchical map of the communities in the graph. 
+
+The following function will find the betweenness for each vertex.
+
+```{r}
+friend_comm_eb <- edge.betweenness.community(m182_friend_no_iso)
+#friend_comm_eb #<-uncomment if you want to see it
+
+```
+
+This process also lends itself to visualization as a dendrogram. The y-axis reflects the distance metric used by the edge betweenness algorithm; for more on this, see M Newman and M Girvan: Finding and  evaluating community structure in networks, Physical Review E 69, 026113 (2004), http://arxiv.org/abs/cond-mat/0308217. 
+
+```{r fig.height = 5, fig.width = 5}
+plot(as.dendrogram(friend_comm_eb))
+
+```
+
+\subsection{Greedy community detection}
+This method was proposed by Clauset et al. It is a fast algorithm (and appopriate for large-scale networks) for community search in undirected network. This algorithm merges nodes iteratively based on the modularity value, optimizing it after each step of merging. As it uses greedy approach it may not always lead to optimal solution in large scale social network.
+
+```{r fig.height = 3, fig.width = 5}
+library(lsa) 
+  
+CFG<-cluster_fast_greedy(m182_friend_no_iso) # use the algorithm
+modularity(CFG) #calculate modularity
+MMatrix<-modularity_matrix(m182_friend_no_iso,membership(CFG))
+round(MMatrix[1,],2)
+membership(CFG) #check which nodes belong where
+length(CFG) #how many clusters
+sizes(CFG) #how large are communities within each cluster
+crossing(CFG, m182_friend_no_iso)#which edges end up between clusters
+par(mar=c(0,0,1,0))
+plot(CFG, m182_friend_no_iso, layout=coords) #use our old coordinates
+# We can also plot without shaded regions
+plot(m182_friend_no_iso, vertex.color=membership(CFG), layout = coords)
+#and we can plot the dendrogram:
+plot_dendrogram(CFG)
+```
+
+\subsection{Spectral community detection}
+Spectral methods of community detection are better for sparse networks. The basic idea is to examine the leading eigenvector of the modularity matrix. The code is simple, and results are quite good.
+
+```{r fig.height = 3, fig.width = 5}
+SCD<-cluster_leading_eigen(m182_friend_no_iso)
+modularity(SCD)
+par(mar=c(0,0,0,0))
+plot(SCD, m182_friend_no_iso, layout=coords)
+#plot without coordinates:
+plot(m182_friend_no_iso, vertex.color=membership(SCD), layout=coords)
+```
+
+\subsection{Comparing performance of different community detection approaches}
+We have a very small, very easy network, so comparison of method performance is rather silly. Normally, you would take the ratio of modularities to compare methods to each other. For example, to compare greedy and optimal, you would do the following:
+
+```{r}
+round(modularity(CFG) / modularity(SCD),3)
+```
+In our case, it would be equal 1, of course, because all of our methods have yielded identical modularities. However, if we do a quick check on our favorite Florentine data, we'll notice we have a slightly different result:
+
+```{r fig.height = 3, fig.width = 5}
+load('flo.Rdata')
+library(network)
+flo.marriage<-as.network(as.matrix(flo.marriage)) #load network
+library(intergraph)
+flo.graph<-asIgraph(flo.marriage) #convert to igraph
+coords1<-layout_with_fr(flo.graph) #create a different set of coordinates
+par(mar=c(0,0,1,0))
+plot(flo.graph, layout=coords1, vertex.label=NA, vertex.size=10)
+
+#Convert to undirected:
+flo.graph<-as.undirected(flo.graph, mode="collapse")
+#Now, commdetect using three different methods.
+#Cluster fast greedy
+CFG_flo<-cluster_fast_greedy(flo.graph)
+modularity(CFG_flo)
+MMatrix_flo<-modularity_matrix(flo.graph,membership(CFG_flo))
+round(MMatrix_flo[1,],2)
+membership(CFG_flo) #check which nodes belong where
+length(CFG_flo) #how many clusters
+sizes(CFG_flo) 
+#Spectral community detection
+SCD_flo<-cluster_leading_eigen(flo.graph)
+modularity(SCD_flo)
+```
+
+```{r fig.height = 5, fig.width = 7}
+
+#Let's plot graphs from three methods side-by-side:
+par(mar=c(0,0,1,0))
+par(mfrow=c(1,3))
+plot(CFG_flo, flo.graph, layout=coords1, main="CFG algorithm")
+plot(SCD_flo, flo.graph, layout=coords1, main="SCD algorithm")
+
+#Now, compare method performance
+round(modularity(CFG_flo) / modularity(SCD_flo),3)
+
+
+```
+Now, performance looks a bit different.
+
+
+\section{Blockmodeling}
+Now, we start experimenting with building more serious models of community detection. Remember that blockmodeling is rearrangement of data based on some \emph{a priori} theoretical attribute, such as role or position in the network. We are going to look at building blockmodels from two datasets, "formal" - an adjacency matrix and "roles" - an attribute table where roles for each member of the "formal" group have been set in advance. In "real life" and with real data, you will be selecting roles yourself, and this is called the "exploratory" blockmodeling - we will learn how to do that, too.
+
+\subsection{A priori blockmodel}
+
+For this part of our work, we will need packages \emph{network} and \emph{sna}. Read the data:
+
+```{r}
+library(network)
+library(sna)
+
+formal<-as.matrix(read.csv("formal.csv", header = TRUE, row.names=1))
+roles<-read.csv("roles.csv", header=TRUE, row.names=1)
+
+formalnet <- network(formal)
+par(mar=c(0,0,2,0))
+indeg <- degree(formalnet, cmode = 'indegree')
+mycoord <- plot(formalnet, displaylabels=TRUE, edge.col='azure4',
+                vertex.col="#E41A1C", vertex.border='azure4', 
+                vertex.cex = indeg + 1 , main ='Downton Abbey',
+                label.cex=0.5, label.pos = 5)
+```
+
+Next, we need to symmetrize our data.  Also remember that symmetrizing the network is the transformation of a directed/asymmetric one-mode network into an undirected/symmetric one-mode network. There are also two symmetry types:
+
+1. Strong: $i<->j$ iff (means "if and only if") $i->j$ and $j->i$ (we also refer to it as the "AND rule").
+1. Weak: $i<->j$ iff $i->j$ or $j->i$ (the "OR rule").
+
+We also know the drawbacks and benefits of symmetrizing, and one of the benefits, among others, is the ability to build meaningful blockmodels. If we look at the network without the bells and whistles I've added to the plot above, this is what it looks like:
+
+```{r}
+plot(formalnet)
+```
+
+Obviously, it's a directed network with both one-directional and mutual ties, so we can use both the AND and the OR rules for symmetrizing the network.
+
+```{r}
+orRule <- symmetrize(formalnet, rule='weak')   # "or" rule
+class(orRule) # symmetrize transformed the network into a matrix 
+orRule <- network(symmetrize(formalnet, rule='weak'), 
+                  directed = FALSE) # 'or' rule
+class(orRule) # network
+andRule <- network(symmetrize(formalnet, rule='strong'), 
+                   directed = FALSE) # 'and' rule
+```
+
+Let's look at what we have as a result:
+
+```{r}
+par(mar=c(1,1,2,1))
+par(mfrow=c(1,3))
+plot(formalnet, main = 'Original', coord=mycoord, vertex.cex =3,
+     edge.col='azure4', vertex.col="#E41A1C", vertex.border='azure4',
+     label=seq(1:20),label.pos=5,label.cex=.5,label.col='gray15')
+plot(orRule, main = 'Or Rule', coord=mycoord, vertex.cex =3, 
+     edge.col='azure4', vertex.col="#377EB8", vertex.border='azure4',
+     label=seq(1:20),label.pos=5,label.cex=.5,label.col='gray15')
+plot(andRule, main = 'And Rule', coord=mycoord, vertex.cex =3, 
+     edge.col='azure4', vertex.col="#4DAF4A", vertex.border='azure4',
+     label=seq(1:20),label.pos=5,label.cex=.5,label.col='gray15')	
+```
+
+Now, let's create our first blockmodel based on the community detection output (in our file "roles," it's the last column, called "commdetect"). We will call this "a priori" formal blockmodel, because we are building a block models on roles that have been predetermined. 
+
+```{r}
+# A more descriptive name, so we don't get confused: 
+snasymmformal <- orRule
+
+aprioriformal<-blockmodel(snasymmformal, roles$commdetect, 
+                          block.content="density", mode="graph", 
+                          diag=FALSE)
+
+# We can build what is called a heatmap, showing the relationships between blocks in color:
+heatmap(aprioriformal[[4]])
+```
+
+Now, that may have looked cool, but what does that all mean? We can color nodes by blocks they belong to.
+
+```{r}
+# Let's visualize the network with nodes colored by block.
+# These are our blocks.
+aprioriformal[[1]]
+aprioriformal[[2]]
+aprioriformal[[3]]
+aprioriformal[[4]]
+
+library(RColorBrewer)
+par(mar=c(1,1,1,1),mfrow=c(2,3))
+col5 <- brewer.pal(5, 'Set1')
+cols <- ifelse(aprioriformal[[1]] == 1, col5[1],
+          ifelse(aprioriformal[[1]] == 2, col5[2],
+           ifelse(aprioriformal[[1]] == 3, col5[3],
+            ifelse(aprioriformal[[1]] == 4, col5[4], col5[5]))))
+par(mar=c(1,1,2,1),mfrow=c(1,1))
+plot(snasymmformal, main = 'Apriori Block Model', coord=mycoord,
+     vertex.cex =3, edge.col='azure4', vertex.col=cols, 
+     vertex.border='azure4', label=seq(1:20), label.pos=5, 
+     label.cex=.5, label.col='gray15')
+
+```
+
+\subsection{Exploratory block model}
+Of course, it would be just great if the roles have always been identified for us, but in real life, it's not going to happen. So we have to have a way to find these roles ourselves, and as we've seen in lecture, there are a few ways to do that. So we are going to use the instruments we have already to try and extract the roles from the network.
+
+\subsubsection{Distance Matrix \& Hierarchical Clustering}
+We can use Euclidian distances to create a distance matrix. Remember we created an "or rule" for our data? We'll refer to it when generating euclidian distances:
+
+```{r}
+# Create an object of distances in the "OR rule," and turn it into a vector
+distformal <- dist(snasymmformal, method="euclidian", diag=FALSE)
+thick <- as.vector(distformal) 
+
+# Now, let's visualize these distances as edge thickness
+par(mar=c(0.5,0,2,0))
+plot(snasymmformal, main = 'Euclidean Distances', coord=mycoord, 
+     vertex.cex =3, edge.col='azure4', vertex.col=col5[2], 
+     vertex.border='azure4', label=seq(1:20),label.pos=5,
+     label.cex=.5,label.col='gray15', edge.lwd = thick^2)
+
+```
+
+
+```{r}
+# Cluster analysis
+formalclust <- hclust(distformal, method="complete")
+```
+\subsubsection{Exploratory blockmodel}
+
+Once we have created a formal set of clusters based on the \emph{hclust} command, we can use clusters to build blockmodels:
+```{r, fig.width=6, fig.height=3}
+# And now, a blockmodel based on clustering:
+exploratoryformal<-blockmodel(snasymmformal, formalclust, k=4,
+                              block.content="density", mode="graph", 
+                              diag=FALSE)
+
+# Plot the two blockmodels one after another for comparison:
+par(mar=c(0,0,2,0))
+plot.blockmodel(aprioriformal)
+plot.blockmodel(exploratoryformal)
+```
+
+Finally, we can make a heatmap of the two blockmodels:
+
+```{r, fig.width=6, fig.height=4}
+par(mar = c(1,1,4,1), mfrow = c(1,2))
+heatmap(aprioriformal[[4]], main ='Apriori Blockmodel')
+heatmap(exploratoryformal[[4]], main ='Exploratory Blockmodel')
+```
+
+\section{Homework 4}
+
+Our homeworks are getting more and more involved. Today, I am asking you to apply what you've learned in today's seminar to a new dataset and provide interpretive explanations of your results. You are free to explore as much as possible, but at the very minimum, please do the following:
+
+1. Choose a dataset from one of our previous labs.
+1. Perform several community detection algorithms. Compare them.
+1. Apply the same routines we did for the exploratory blockmodel here (it's just copy/paste and then explore the \emph{k} option). Make a heatmap for your model, vary the $k$, make a heatmap again.....etc., until you select a $k$.
+

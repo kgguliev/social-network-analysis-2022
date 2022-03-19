@@ -1,0 +1,373 @@
+---
+pdf_document:
+  includes:
+    in_header: docstyle.sty
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\begin{center}
+National Research University Higher School of Economics,  
+Faculty of Social Sciences
+
+
+{\Large Social Network Analysis, Spring 2022 \par}
+
+
+\large \textbf{Seminar 9, 15/03/2022}
+
+Stanislav Moiseev, PhD
+\end{center}
+
+*****
+
+> ## Introduction
+
+We are almost done! 
+
+\item For today's assignment, you will need the following packages (remember, R is case sensitive, make sure, when installing packages, to keep the appropriate case:
+\begin{enumerate}
+  \item rmarkdown 
+  \item RColorBrewer
+  \item NetData, network, sna, igraph
+   \item  latticeExtra - new (make sure you install it in Console ahead of time)
+  \item ... and any other package you wish to use
+  \end{enumerate}
+Remember that to use a certain package, you need to make sure that the library is installed (using install.packages("packagename") command). To use a loaded package, you call it with "library.(packagename)" command. 
+
+
+\item After completing today's lab, you should be able to accomplish the following:
+  \begin{enumerate}
+  \item Continue to enhance your R programming skills.
+  \item Learn how to work with real-life data, prepare it for analysis, extract relevant information.
+  \item Put together network and non-network data into models that you can analyze and interpret. 
+  \end{enumerate}
+
+\end {itemize}
+
+Please make sure your working directory is set to a folder where the data files are located; otherwise, you will be forced to provide a full path to data every time.
+
+> ## Models of social influence
+
+The fundamental premise of these models is that you examine how \emph{networks} affect \emph{behavior}.
+
+\subsection{The data}
+Please make sure your working directory is set to a folder where the data files are located; otherwise, you will be forced to provide a full path to data every time.
+
+\subsection{Ground rules}
+This is a real-life dataset collected on a real-life company, as I've mentioned. Before we go into any further details with it, the following are the ground rules:
+
+\begin{itemize}
+\item This dataset is for educational purposes only, for your use in this class. You may NOT, under any circumstances, distribute it outside of this class, for any reason.
+\item To use this dataset for any purposes other than this course, even if it is for your diploma, you MUST obtain my permission IN WRITING. Referring later to a "conversation" we might have had about it will not suffice. 
+\item If any paper is published from this dataset, in addition to obtaining a permission, you must include the authors of this dataset as co-authors. I will give you the names if and when such time comes.
+\end{itemize}
+
+\subsection{Dataset description}
+The data was collected in a real-life company, and employees were asked to answer questions of several types. We were interested in their attitudes towards their jobs, as well as levels of burnout, conflict, etc., in the organization. We were also interested in whether the employees were exhibiting the so-called "organizational citizenship behavior" (please read about this concept a little as you work with this dataset), so we collected additional questions on that. To reduce common method bias, we collected data from employees themselves, and measures of their performance - from their supervisors.
+
+There is very little missing data, so we were lucky with our response rates. All people surveyed were the people employed in one department - there were 71 people in total, we got data on 68. We are missing just three from that department, though network data is available on many more - those are people from other departments.
+
+Other than describe the dataset for you, I am going to refer you to the file "Questionnaire.pdf" you will find question descriptions right there. 
+
+\begin{itemize}
+\item First page is introduction and description. It is a promise to keep information confidential (and you will see the measures we've taken to protect the confidentiality) and contact information of the researcher (redacted for now).
+\item Second page collects demongraphic informatin of the respondent. It corresponds to the first 12 columns of the datafile "OCB," the "Main" tab. When you open the file, you will see that some questions have changed their order, and they've been named as short descriptions of the questions, but everything is there.
+\item Network questions. This is how we collect the multiplex data. We ask for the person's name, then ask to describe the contact type, and for each selected contact type we ask the person to value the relationship, as indicated in the questionnaire. This is the real questionnaire we've used, so network questions take a few pages. 
+
+People were free to name as many people as they've wished and the people they named did not need to be from their own department. So we ended up with 68 responses from one department and 122 people as part of the network. On the remaining 54 we do not have demongraphic information, because they did not participate in our survey.
+
+\item Substantive questions. This is the part where we collect the information of interest. This survey had A LOT of questions - and they are grouped together by topic. Whether it is correct is subject of debate, but we opted to do it that way based on solid methodological recommendations, trust me. ))
+\item Performance data. This part of the questionnaire was filled by the supervisors only. They had to list their employees, and then rate them on questions asked, which evaluated both their task performance and the OCB.
+\end{itemize}
+
+All collected questionnaires were entered into Excel for further analysis. In the file "OCB" you will find the following information:
+
+\begin{itemize}
+\item Tab "Main" contains all demographic information on our respondents and their answers to substantive questions (work attitudes). Please note that respondent names are reduced to their initials (in English), so that we can protect their privacy. Combined with not knowing the company or the department, this assures respondent privacy.
+
+Questions Q1-Q37 correspond to questions 1:1-1:29 (first 29) and 2:1-2:8 (second eight). Questions QS1-QS36 correspond to supervisors' ratings of these employees. 
+
+\textbf{Please note:} Some questions will have a letter "R" to them. This is because they were REVERSE-CODED. I am sure you know what reverse-coding means, so we had to transfer data back to the same scale as non-reverse-coded items, so that we could put them together into one factor. In this dataset, all reverse-coding was complete, so you do not need to worry about that.
+
+\item Tabs "Friendship," "Professional," "Boss" and "Support" are adjacency matrices - respondents are entered in exact the same order in rows and columns of all matrices. Data in these matrices is shown as is, without adding additional information - just the valued responses to connections that people have indicated.
+
+\item Tab "All Net" is the network of connections that's dichotomized somewhat the same way we've dichotomized the "trade.all" data - here, if any type of connection is present in either of the previous tabs, there is a "1" in the cell. Otherwise, a zero. This is already a matrix with zeros in cells that do not have a value.
+
+\item Tabs "*.Net" - adjacency data from previous tabs is converted to networks for further use.
+
+\end{itemize}
+
+***
+
+\subsection{Extracting data for further use}
+We can turn data into many different storage formats, but since we are starting with Excel, I find it the easiest to just convert data into .csv. As you may know, .csv does not allow to have tabs - so you have to extract one worksheet at a time. It's not that bad, actually, considering that we might want to store all that data separately, anyway.
+
+\subsubsection{Attribute data}
+All attribute data, including responses to content questions, are stored in the tab "Main," where column names are variable names, and rows contain the information. To extract the data, do the following:
+
+\begin{itemize}
+\item Right-mouse-click on the tab, select "Move or Copy." 
+\item In the field "Move selected sheets to book" select 
+"New book"
+\item Check-mark "Create a copy," click OK. A copy of the tab will appear as a separate file.
+\item Select File->Save As. Find your working directory, save the file as "OCB\_att" (or any other name - give it my name if you want to copy my code), give it extension "CSV(Comma delimited)" in the drop-down menu. Click "yes" when Excel gives you a warming about losing some of your storage structure, it's OK.
+\item For the purpose of this lab, I will also move the "AllNet" tab into the .csv format. The only difference with the attribute file is that you have names of variables in both rows and columns. I recommend you REMOVE the first columns with names and only leave the names in rows. It greatly simplifies working with the file, because you do not need to clean it up once you bring it in.
+
+\end{itemize}
+
+
+\subsection{Working with data}
+Now we are ready to actually do something with our data. Of course, we usually have a research question, and let's pretend we have one. Questions 2:01-2:04, corresponding to Q30-Q33 in the Excel file, refer to the factor called "Physical participation" - how much does a person really put effort and energy into their job? It is a self-rated question, and of course, it's biased. But for now, we will not worry about biases as well as whether regression - the method we'll use today - is appropriate for analysis here. Actually, it's NOT appropriate, we have to build a factor-analytic model, but I'll let you explore that on your own, if you wish. For now, I am just showing the basics.
+
+So let's pretend I am interested in learning how self-rated physical participation of each person depends on person's other characteristics (we've learned to call them attributes) as well as the networks they are embedded in. I will build a regression model where physical participation will be a dependent variable (DV), all demographics - IV, and network variables we can calculate on each node - also IVs. So network characteristics are just the variables in the standard regression model. This is the most basic use of networks, but also the most intuitive for people who just start to analyze networks.
+
+\subsection{The attributes file}
+Let's bring the file in. Please note that when we use the "header=TRUE" option, we can call variables by their names from the R environment. It's much more convenient than converting data to a matrix and referring to it in a matrix[,] format - we have close to 90 columns altogether. So keep an Excel file open, so you can check your variable names, when needed.
+
+```{r}
+ocb_att<-read.csv('ocb_att.csv', header=TRUE)
+
+# To make sure we got it right, let's look at the age variable:
+ocb_att$Age
+
+```
+
+OK, looks good. Let's pull in the rest of the needed demographics. Also, what should we do with the "physical participation" factor? There are several ways to create a single variable out of it, most accurate being the factor, but we do not have time to mess with factors today. So I will go ahead and just use the mean of the three items to create a single variable. Wrong, I know - but it's for demonstration purposes only (we can discuss why it's wrong and how to make it right some other time).
+
+```{r}
+age<-ocb_att$Age
+sex<-ocb_att$Sex
+#How long the person had this position:
+tenure<-ocb_att$WorkTitleYear+ocb_att$WorkTitleMonth/12 
+#How long worked in organization:
+tenure_org<-ocb_att$WorkOrgYear+ocb_att$WorkOrgMonth/12
+#How long reported to the same supervisor:
+tenure_sup<-ocb_att$RepSupYear+ocb_att$RepSupMonth/12
+
+# Set of dummies for education:
+ed1<-ifelse(ocb_att$Education==3,1,0) # this is for secondary specialized
+ed2<-ifelse(ocb_att$Education==4,1,0) # this is higher
+# Secondary, obviously, is the baseline
+```
+Finally, the factor of physical participation, which we turn into a variable. To create an average, we use the "rowMeans" command, which calculates the mean of several columns in a row. When there is missing data (and there could be, since this is a live dataset), we need to account for it. For this purpose, we are using the "na.rm=TRUE" command, which tells us whether the missing values should be omitted from the calculations. Setting it to TRUE does omit them.
+
+```{r}
+#Physical participation variable
+phys_part<-rowMeans(cbind(ocb_att$Q30,ocb_att$Q31,ocb_att$Q32,ocb_att$Q33),na.rm=TRUE)
+```
+
+
+\subsection{Basic regression}
+
+Now, before we build a regression model, we need to check all assumptions, etc. I trust that you know how to do that. The only thing I will check is correlations - and for that, I need to put data into a matrix and run the "cor" function on it:
+
+```{r}
+cor_mat<-cbind(phys_part, age, sex, tenure, tenure_org, tenure_sup, ed1, ed2)
+cor(cor_mat)
+
+```
+
+Well, it does not look good, because our DV does not really correlate well with anything. Oh, well - it's just a dummy test to demonstrate the commands. Let's run the basic regression and see what we get:
+
+```{r}
+lmout<-lm(phys_part~age+sex+tenure+tenure_org+tenure_sup+ed1+ed2)
+summary(lmout)
+
+```
+
+OK, nothing to get excited about. Through the process of iterative elimination, I've arrived at this model:
+
+```{r}
+lmout<-lm(phys_part~tenure+tenure_sup)
+summary(lmout)
+
+```
+
+Nevermind that coefficients almost zero each other out; given that the two variables on tenure actually differ, we might arrive at something in terms of explanatory power. However, that was not the main purpose of this exercise - the idea was to show you the commands, but then add network variables to the model to see what we get as a result.
+
+\subsection{Adding network variables as predictors}
+
+For this part of the assignment, I will use the AllNet network - and I suspect, there will be little there to get excited about. Remember, this is the dichotomized network indicating any connections that may exist between people and ignoring the values of these connections. But for demonstration purposes, it will do.
+
+I will most likely use both the \emph{igraph} and the \emph{network} packages here, so I'll do all I can with one, and then switch to another.
+
+
+```{r}
+
+all_net<-read.csv('AllNet.csv', header=TRUE) # read data
+all_mat<-as.matrix(all_net) # save it as a matrix
+```
+
+```{r}
+library(network)
+library(sna)
+all_network<-as.network(all_mat, directed=TRUE)
+
+#Create vectors of network measures:
+geo.dist<-geodist(all_network)
+indegree <- degree(all_network, gmode = 'digraph', 
+  diag = FALSE, cmode = 'indegree', 
+  rescale = FALSE, ignore.eval = FALSE)
+outdegree <- degree(all_network, gmode = 'digraph', 
+  diag = FALSE, cmode = 'outdegree', 
+  rescale = FALSE, ignore.eval = FALSE)
+degree.f <- degree(all_network, gmode = 'digraph', 
+  diag = FALSE, cmode = 'freeman', 
+  rescale = FALSE, ignore.eval = FALSE)
+between <- betweenness(all_network, gmode = 'digraph',
+  diag = FALSE, cmode = 'directed')
+close <- closeness(all_network, gmode = 'digraph',
+  diag = FALSE, cmode = 'directed', rescale = FALSE)
+eigen <- evcent(all_network, gmode = 'digraph',
+  diag = FALSE, rescale = FALSE)
+```
+
+I think that's it with \emph{network} and \emph{sna}. I can now move to \emph{igraph}, where I can do a few more things.
+
+```{r}
+detach(package:sna)
+detach(package:network)
+library(igraph)
+all_graph<-graph_from_adjacency_matrix(all_mat) #create a graph
+```
+
+And now, the fun part starts - this is working with real data, right? Have you noticed that in our attributes file, we have 68 nodes, but in our networks - 122? Now, we just generated a bunch of network statistics, but that was for the entire network of 122 nodes, but how do we extract only those nodes for which we have attributes? Until now, we've been given the nodes and the attributes in exactly the same order; today, we'll learn how to pass information with loops in R.
+
+OK, so we have two sets of data:
+1. Nodes that compose our network - the entire set of 122, on which we've calculated the network stats - these will become \emph{i} nodes in our loops.
+1. Nodes that have attributes (68 of them) - these will become \emph{j} nodes in our loops.
+
+We need predictor variables that are formed out of network statistics. We have 68 nodes that we are running the regression on, but we have 122 nodes for which we've obtained the network data. How do we know which nodes in 122 to take information from for our set of 68? 
+
+What we have to do is look through every node in set \emph{j}, find a corresponding node in set \emph{i}, and pass the attribute of the \emph{j}th node to a variable in set \emph{i}. In other words, we are using the network statistics, calculated on 122 nodes, but only creating vectors of variables for 68 nodes we have attributes for - otherwise, we can't use network attributes in regression. Now, if we want to pass the attributes from set \emph{j}, such as gender, to our entire network of nodes \emph{i}, we have to do it the other way around. 
+
+Believe it or not, we have to run the set of double loops to find matching nodes. This is because we loop through every node in set \emph{i} and compare it with the FIRST node in set \emph{j}; if we find a match between them, we grab it. Then, we have to loop again through every single node in set \emph{i} for the SECOND node in set \emph{j}, and so on until we've run through every node in the first set in an attempt to match it with a node from the second set.
+
+Let's start with something simple, like gender. Let's say, we need to pass gender attribute to the network and create a picture of our network (to think of it, we haven't done it yet). The easiest way to match our nodes is on node names, because they are identical between all sets of data and networks.
+
+```{r}
+names<-ocb_att$Name # pull the names out of attributes dataset
+gender_vector<-vector() #create a vector for gender
+
+# Next, run a double-loop and assign gender to a corresponding node:
+
+for(i in 1:122){ # this is our set of all network nodes
+  for(j in 1:68){ # this is our set of attribute-containing nodes
+    # for each node in i, we run through all node in j
+    # and compare names
+    if(V(all_graph)$name[i]==names[j]){
+      #if we match, we add the attribute to a vector
+           gender_vector[i]<-sex[j]
+           # and exit the inner loop for the next i
+          break;}
+    # if not, we are assigning a missing value 
+    # and keep going until we find a matching node
+    else{gender_vector[i]<-NA}
+  }
+}
+
+# Let's look at the result:
+gender_vector
+```
+
+What a beauty! See - it wasn't that bad. Notice - there were a couple of nodes in the later bunch, for which we have found gender. Now, let's pass the attribute to the nodes and draw a picture:
+
+```{r}
+all_graph<-set_vertex_attr(all_graph, 'gender', value=c(gender_vector))
+colors<-ifelse(gender_vector==1,"palevioletred",
+               ifelse(gender_vector==0,"royalblue2","gray"))
+par(mar=c(0,0,1,0))
+plot(all_graph, vertex.size=6.5, vertex.color=colors,
+     edge.arrow.size=.2, edge.color="black", 
+     vertex.label=NA, main="Meaningless Network of AllNet")
+```
+
+Now, let's go back and do the procedure the other way around - from the full network of 122 nodes to the attributes-containing nodes of 68, we pass the calculated network statistics. Again, we create vectors to hold them, and those vectors will become our independent variables.
+
+```{r}
+# Create vectors first
+v_geodist<-vector()
+v_indegree<-vector()
+v_outdegree<-vector()
+v_degree.f<-vector()
+v_between<-vector()
+v_close<-vector()
+v_eigen<-vector()
+
+for(i in 1:122){
+     for(j in 1:68){
+         if(V(all_graph)$name[i]==names[j]){
+                  v_geodist[j]<-geo.dist[i]
+                  v_indegree[j]<-indegree[i]
+                  v_outdegree[j]<-outdegree[i]
+                  v_degree.f[j]<-degree.f[i]
+                  v_between[j]<-between[i]
+                  v_close[j]<-close[i]
+                  v_eigen[j]<-eigen[i]
+break;}
+         else{}
+       }
+}
+
+##v_geodist
+##v_indegree
+##v_outdegree
+##v_degree.f
+##v_between
+##v_close
+##v_eigen
+```
+
+We can now use some (not all) variables in our regression. As expected, v_geodist is a list - we have to break it down further before we can work with it. v_degree.f is the total degree, it's sum of indegree and outdegree, and we can't use all three values in regression simultaneously (but we can use two at a time in any combination), and closeness centrality is zero (why, by the way? you should understand the answer).
+
+```{r}
+# It helps to look at correlations:
+
+cor_mat<-cbind(phys_part,tenure,tenure_sup,v_indegree, v_degree.f,v_between,v_eigen)
+cor(cor_mat)
+
+```
+
+Well, looks like there is very little to get excited about. But then again, we knew right away the network was meaningless. Nonetheless, let's complete the exercise. When you have a multitude of variables and have no clue where to start, there is another option - model selection obtained by running through every possible combination of variables (how many would we have with 9?). As search criteria, we use R-square and adjusted R-square. The code below is rather complex, and I will do my best to walk you through it. The idea is - you look for a combination of highest R-square and lowest residuals.
+
+```{r}
+# You will need to install package "leaps"
+library(leaps)
+# Create a matrix of all x-variables
+X.full <- cbind(tenure, tenure_org, tenure_sup, age, sex,
+  v_indegree,v_outdegree, v_between, v_eigen) 
+# Rename DV, it's messy
+y<-phys_part
+# Use build-in function to generate the combinations of variables
+a <- leaps(X.full,y)
+
+# Calculate R-square for each combination
+a.r2 <- leaps(X.full,y,method="r2")$r2
+a.adjr2 <- leaps(X.full,y,method="adjr2")$adjr2
+
+# Create a table with all outputs
+model.sel <- cbind(a$which, a.r2,a.adjr2)
+options(digits=3)
+
+# Print the resulting combination to search through
+# In the model, the first 9 columns 
+# show combinations of x-variables in the model
+model.sel
+```
+
+There isn't a good model, really. But look what happens here:
+
+```{r}
+lmout<-lm(phys_part~tenure+tenure_sup+v_indegree+v_outdegree+
+            v_between+v_eigen)
+summary(lmout)
+```
+
+In the presence of network variables (which are highly insignificant) our original variables become much more significant. There may be an indirect effect present, but given our DV and all other noise, I'd say, let's not speculate about it.
